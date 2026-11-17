@@ -1,0 +1,27 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+.toolbar {
+  --app-region: drag;
+  display: flex;
+  min-block-size: max(3rem, var(--mygo-titlebar-height, 0px));
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-inline: calc(var(--mygo-titlebar-inset-left, 0px) + 12px)
+    calc(var(--mygo-titlebar-inset-right, 0px) + 12px);
+
+  :is(button, a, input, kbd) { --app-region: no-drag; }
+}
+
+.content {
+  min-inline-size: 0;
+  padding: 12px 16px;
+
+  > * { max-inline-size: 1120px; margin-inline: auto; }
+}

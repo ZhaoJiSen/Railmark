@@ -1,0 +1,46 @@
+.patch {
+  --diff-font-family: var(--font-mono);
+  --diff-background-color: var(--background);
+  --diff-text-color: var(--foreground);
+  --diff-code-insert-background-color: light-dark(#e7f5eb, #142a20);
+  --diff-code-delete-background-color: light-dark(#fae9e8, #351d20);
+  --diff-gutter-insert-background-color: light-dark(#d0ebd8, #1b372a);
+  --diff-gutter-delete-background-color: light-dark(#f7d9d6, #45262a);
+  --diff-omit-gutter-line-color: var(--muted-foreground);
+  font: 0.75rem var(--diff-font-family);
+}
+
+.patch :global(.diff-gutter-col) {
+  width: calc(var(--git-diff-gutter-digits, 4) * 1ch + 0.75rem);
+}
+
+.patch :global(.diff-gutter) {
+  color: var(--muted-foreground);
+  cursor: default;
+  padding-inline: 0.375rem;
+  white-space: nowrap;
+}
+
+.patch :global(.diff-code) {
+  position: relative;
+  padding-inline-start: 1.5em;
+  tab-size: 4;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.patch :global(.diff-code-insert)::before,
+.patch :global(.diff-code-delete)::before {
+  position: absolute;
+  inset-inline-start: 0.4em;
+  color: var(--muted-foreground);
+  user-select: none;
+}
+
+.patch :global(.diff-code-insert)::before {
+  content: "+";
+}
+
+.patch :global(.diff-code-delete)::before {
+  content: "−";
+}

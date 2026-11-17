@@ -1,0 +1,15 @@
+{
+  "name": "Railmark",
+  "slug": "railmark",
+  "identifier": "app.railmark.desktop",
+  "version": "0.1.2",
+  "devUrl": "http://127.0.0.1:3419",
+  "devCommand": "npm run dev:web",
+  "buildCommand": "npm run build:web",
+  "frontendDist": "out",
+  "bindings": "lib/mygo.ts",
+  "out": "build",
+  "macos": {
+    "dmgTitle": "Railmark"
+  }
+}

@@ -1,0 +1,4 @@
+allowBuilds:
+  '@parcel/watcher': true
+minimumReleaseAgeExclude:
+  - mygo-runtime@0.9.1
