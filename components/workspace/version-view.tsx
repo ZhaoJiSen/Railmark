@@ -1,19 +1,18 @@
 'use client'
 
 import { CalendarDays, FilePlus2, Pencil, Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Desk } from '../../lib/mygo'
 import type { Project, Requirement, Version } from '../../lib/mygo'
-import type { GitByDirectory, GitRequest } from '../../lib/types'
-import { readableError } from '../../lib/utils'
+import type { GitRequest } from '../../lib/types'
 import { deliveryIssues, requirementMatches, versionDates } from '../../lib/workspace-data'
 import { Button } from '../ui/button'
 import { ErrorLine } from '../ui/form-parts'
 import { Separator } from '../ui/separator'
 import { EmptyPanel } from './empty-panel'
+import { useVersionGitOverview } from './use-version-git-overview'
 import { RequirementList } from './requirement-list'
 import { VersionStatus } from './status'
 import { VersionFilters } from './version-filters'
+import { emptyVersionFilters, useVersionLists } from './version-list-state'
 import { VersionSummary } from './version-summary'
 
 interface VersionProps {
@@ -24,36 +23,17 @@ interface VersionProps {
   onEdit: () => void
   onCreate: () => void
   onOpen: (requirement: Requirement) => void
+  onProject: (id: number, triggerId: string) => void
   onGit: (request: GitRequest) => void
 }
 
-const emptyFilters = { query: '', projectId: 0, state: 'all', showIssues: false }
-
 export function VersionView(props: VersionProps) {
-  const { version, requirements, projects, newRequirementId, onEdit, onCreate, onOpen, onGit } = props
-  const [filters, setFilters] = useState(emptyFilters)
-  const [lastCreated, setLastCreated] = useState(newRequirementId)
-  if (newRequirementId && newRequirementId !== lastCreated) {
-    setLastCreated(newRequirementId)
-    setFilters(emptyFilters)
-  }
-  const { query, projectId, state, showIssues } = filters
-  const [refresh, setRefresh] = useState(0)
-  const [result, setResult] = useState<{ refresh: number, snapshots: GitByDirectory, error: string }>()
-  const snapshots = result?.snapshots ?? {}
-  const checking = requirements.length > 0 && result?.refresh !== refresh
+  const { version, requirements, projects, newRequirementId, onEdit, onCreate, onOpen, onProject, onGit } = props
+  const filters = useVersionLists(state => state.filters[version.id] ?? emptyVersionFilters)
+  const setFilters = useVersionLists(state => state.setFilters)
+  const { query, projectId, state, category, showIssues } = filters
+  const { checks, checking, recentlyChecked, error, refresh } = useVersionGitOverview(version.id, requirements)
   const dates = versionDates(version)
-
-  useEffect(() => {
-    if (!requirements.length) return
-    let ignore = false
-    Desk.gitOverview(version.id).then(values => {
-      if (!ignore) setResult({ refresh, snapshots: Object.fromEntries(values.map(value => [value.directoryId, value])), error: '' })
-    }).catch(error => {
-      if (!ignore) setResult(current => ({ refresh, snapshots: current?.snapshots ?? {}, error: readableError(error) }))
-    })
-    return () => { ignore = true }
-  }, [version.id, requirements.length, refresh])
 
   const problemProjects = new Set<number>()
   const versionProjects = new Set<number>()
@@ -61,7 +41,7 @@ export function VersionView(props: VersionProps) {
   for (const item of requirements) {
     for (const delivery of item.projects) {
       versionProjects.add(delivery.projectId)
-      if (deliveryIssues(delivery, snapshots[delivery.directoryId]).length) {
+      if (deliveryIssues(delivery, checks[delivery.directoryId]?.status).length) {
         problemProjects.add(delivery.projectId)
         issueRequirements.add(item.id)
       }
@@ -70,6 +50,7 @@ export function VersionView(props: VersionProps) {
 
   const filtered = requirements.filter(item => requirementMatches(item, query)
     && (state === 'all' || state === item.state)
+    && (category === 'all' || category === (item.category || 'uncategorized'))
     && (!projectId || item.projects.some(project => project.projectId === projectId))
     && (!showIssues || issueRequirements.has(item.id)))
 
@@ -78,7 +59,7 @@ export function VersionView(props: VersionProps) {
       <header className="space-y-2 pb-3">
         <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-            <h1 className="min-w-0 text-2xl font-semibold break-words tracking-tight">{version.name}</h1>
+            <h1 tabIndex={-1} className="min-w-0 text-2xl font-semibold break-words tracking-tight outline-none">{version.name}</h1>
             <VersionStatus state={version.state} />
           </div>
           <div className="flex items-center gap-2">
@@ -93,7 +74,8 @@ export function VersionView(props: VersionProps) {
         )}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <VersionSummary total={requirements.length} done={requirements.filter(item => item.state === 'done').length}
-            issues={problemProjects.size} showIssues={showIssues} onIssues={showIssues => setFilters(current => ({ ...current, showIssues }))} />
+            issues={problemProjects.size} affectedRequirements={issueRequirements.size}
+            showIssues={showIssues} onIssues={showIssues => setFilters(version.id, { ...filters, showIssues })} />
           {dates && (
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarDays aria-hidden="true" className="size-3" />{dates}
@@ -110,26 +92,28 @@ export function VersionView(props: VersionProps) {
           )}
         </h2>
         {requirements.length > 0 && (
-          <VersionFilters query={query} projectId={projectId} state={state} checking={checking} showIssues={showIssues}
+          <VersionFilters query={query} projectId={projectId} state={state} category={category} checking={checking}
+            recentlyChecked={recentlyChecked} showIssues={showIssues}
             projects={projects.filter(project => versionProjects.has(project.id))}
-            onClearIssues={() => setFilters(current => ({ ...current, showIssues: false }))}
-            onQuery={query => setFilters(current => ({ ...current, query }))}
-            onProject={projectId => setFilters(current => ({ ...current, projectId }))}
-            onState={state => setFilters(current => ({ ...current, state }))}
-            onRefresh={() => setRefresh(value => value + 1)} />
+            onClearIssues={() => setFilters(version.id, { ...filters, showIssues: false })}
+            onQuery={query => setFilters(version.id, { ...filters, query })}
+            onProject={projectId => setFilters(version.id, { ...filters, projectId })}
+            onState={state => setFilters(version.id, { ...filters, state })}
+            onCategory={category => setFilters(version.id, { ...filters, category })}
+            onRefresh={refresh} />
         )}
       </div>
 
-      <ErrorLine message={result?.error ? `Git 核对失败，${Object.keys(snapshots).length ? '显示上次核对结果' : '暂时无法判断工作区异常'}。 ${result.error}` : ''} />
+      <ErrorLine message={error} />
       {filtered.length > 0 ? (
-        <RequirementList requirements={filtered} snapshots={snapshots} selectedId={newRequirementId}
-          onOpen={onOpen} onGit={onGit} />
+        <RequirementList versionId={version.id} requirements={filtered} checks={checks} selectedId={newRequirementId}
+          onOpen={onOpen} onProject={onProject} onGit={onGit} />
       ) : (
         <EmptyPanel icon={<FilePlus2 />}
-          title={requirements.length ? showIssues && result?.error ? '当前筛选下暂无可显示的异常结果' : '没有符合条件的需求' : '当前版本还没有需求'}
+          title={requirements.length ? showIssues && error ? '当前筛选下暂无可显示的异常结果' : '没有符合条件的需求' : '当前版本还没有需求'}
           body={requirements.length ? undefined : '新建需求后，可在这里跟进进度与关联项目的 Git 状态。'}
           action={requirements.length ? (
-            <Button type="button" variant="outline" onClick={() => setFilters(emptyFilters)}>
+            <Button type="button" variant="outline" onClick={() => setFilters(version.id, emptyVersionFilters)}>
               清除筛选
             </Button>
           ) : undefined} />

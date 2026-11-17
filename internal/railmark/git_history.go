@@ -30,7 +30,7 @@ func listGitBranches(ctx context.Context, path string) ([]GitBranch, string) {
 	return branches, ""
 }
 
-func ReadGitHistory(ctx context.Context, d Directory, ref string) (GitHistory, error) {
+func ReadGitHistory(ctx context.Context, d Directory, ref, base string) (GitHistory, error) {
 	if !strings.HasPrefix(ref, "refs/heads/") && !strings.HasPrefix(ref, "refs/remotes/") {
 		return GitHistory{}, errors.New("请选择本地分支或远程跟踪分支")
 	}
@@ -45,6 +45,10 @@ func ReadGitHistory(ctx context.Context, d Directory, ref string) (GitHistory, e
 	history.Commits, history.More, err = gitCommits(ctx, d.Path, history.Head, gitHistoryLimit, 0)
 	if err != nil {
 		return GitHistory{}, errors.New("无法读取该分支的提交")
+	}
+	if base != "" {
+		comparison := compareGitHistory(ctx, d.Path, history.Head, base)
+		history.Comparison = &comparison
 	}
 	return history, nil
 }

@@ -14,7 +14,7 @@ import { Separator } from '../ui/separator'
 import { ErrorLine } from '../ui/form-parts'
 import { Textarea } from '../ui/textarea'
 
-export function Activity({ id, onChanged }: { id: number, onChanged: () => void }) {
+export function Activity({ id, updatedAt, onChanged }: { id: number, updatedAt: string, onChanged: () => void }) {
   const text = useNoteDrafts(state => state.noteDrafts[id] ?? '')
   const setNoteDraft = useNoteDrafts(state => state.setNoteDraft)
   const saving = useNoteDrafts(state => state.savingNotes.has(id))
@@ -31,7 +31,7 @@ export function Activity({ id, onChanged }: { id: number, onChanged: () => void 
       if (!ignore) setError(readableError(error))
     })
     return () => { ignore = true }
-  }, [id, saving])
+  }, [id, saving, updatedAt])
 
   async function addNote(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()

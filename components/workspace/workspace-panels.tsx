@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import type { Requirement } from '../../lib/mygo'
 import type { GitRequest } from '../../lib/types'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '../ui/resizable'
 import { GitPanelContent } from './git-panel-content'
@@ -10,10 +11,11 @@ interface WorkspacePanelsProps {
   children: ReactNode
   request?: GitRequest
   onClose: () => void
-  onProject: (id: number) => void
+  onProject: (id: number, source: GitRequest) => void
+  onConflict: (requirement: Requirement, source: GitRequest) => void
 }
 
-export function WorkspacePanels({ children, request, onClose, onProject }: WorkspacePanelsProps) {
+export function WorkspacePanels({ children, request, onClose, onProject, onConflict }: WorkspacePanelsProps) {
   const [displayed, setDisplayed] = useState(request)
   if (request && request !== displayed) setDisplayed(request)
 
@@ -65,14 +67,15 @@ export function WorkspacePanels({ children, request, onClose, onProject }: Works
               className="h-1 w-7 rounded-full bg-muted-foreground/50 transition-colors group-hover:bg-foreground group-data-[separator=active]:bg-foreground"
             />
           </ResizableHandle>
-          <ResizablePanel id="git-pane" elementRef={pane} defaultSize="50%" minSize="30%" className="touch-auto!" style={{ overflow: 'hidden' }}>
+          <ResizablePanel id="git-pane" elementRef={pane} defaultSize="44%" minSize="30%" className="touch-auto!" style={{ overflow: 'hidden' }}>
             <aside id="git-panel" aria-label="Git 面板" inert={closing}
               className="h-full min-h-0 overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150">
               <GitPanelContent
-                key={`${displayed.directoryId}:${displayed.delivery?.baseBranch ?? ''}:${displayed.delivery?.branch ?? ''}`}
+                key={`${displayed.requirementId ?? ''}:${displayed.directoryId}:${displayed.delivery?.group ?? ''}:${displayed.delivery?.baseBranch ?? ''}:${displayed.delivery?.branch ?? ''}`}
                 request={displayed}
                 onClose={onClose}
                 onProject={onProject}
+                onConflict={onConflict}
               />
             </aside>
           </ResizablePanel>

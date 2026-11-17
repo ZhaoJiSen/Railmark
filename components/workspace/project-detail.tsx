@@ -1,7 +1,8 @@
-import { ArrowLeft, ChevronRight, Folder, FolderPlus, GitBranch, Pencil } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Folder, FolderPlus, GitBranch, Pencil, Tag } from 'lucide-react'
 import type { Project, Requirement, Version } from '../../lib/mygo'
 import type { GitRequest } from '../../lib/types'
-import { Button } from '../ui/button'
+import { ProjectIconAction } from './project-icon-action'
+import { projectItemClassName, projectItemTriggerClassName } from './project-item'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '../ui/item'
 import { Status } from './status'
 
@@ -10,6 +11,7 @@ interface ProjectDetailProps {
   requirements: Requirement[]
   versions: Version[]
   onBack: () => void
+  backLabel: string
   activeDirectoryId?: number
   onRename: () => void
   onAddDirectory: () => void
@@ -19,30 +21,32 @@ interface ProjectDetailProps {
 }
 
 export function ProjectDetail(props: ProjectDetailProps) {
-  const { project, requirements, versions, onBack, activeDirectoryId, onRename, onAddDirectory, onRequirement, onGit, importing } = props
+  const { project, requirements, versions, onBack, backLabel, activeDirectoryId, onRename, onAddDirectory, onRequirement, onGit, importing } = props
   const associations = Map.groupBy(requirements.filter(req => req.projects.some(item => item.projectId === project.id)),
     req => req.versionId)
 
   return (
     <article className="space-y-3">
-      <header>
-        <Button type="button" variant="ghost" size="sm" className="-ms-1.5 mb-1 text-muted-foreground" onClick={onBack}>
-          <ArrowLeft />返回本地项目
-        </Button>
-        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-          <h1 data-detail-heading tabIndex={-1} className="min-w-0 text-2xl font-semibold tracking-tight wrap-anywhere outline-none">{project.name}</h1>
-          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={onRename}><Pencil />重命名</Button>
+      <header className="flex items-center gap-2">
+        <ProjectIconAction label={backLabel} className="shrink-0 text-muted-foreground" onClick={onBack}>
+          <ArrowLeft aria-hidden="true" />
+        </ProjectIconAction>
+        <h1 data-detail-heading tabIndex={-1} className="min-w-0 flex-1 text-2xl font-semibold tracking-tight wrap-anywhere outline-none">{project.name}</h1>
+        <div role="group" aria-label="项目操作" className="flex shrink-0 items-center gap-1 pe-2">
+          <ProjectIconAction label="重命名项目" tooltipSide="bottom" className="text-muted-foreground" onClick={onRename}>
+            <Pencil aria-hidden="true" />
+          </ProjectIconAction>
+          <ProjectIconAction label="添加目录" tooltipSide="bottom" className="text-muted-foreground" onClick={onAddDirectory} disabled={importing}>
+            <FolderPlus aria-hidden="true" />
+          </ProjectIconAction>
         </div>
       </header>
       <section aria-labelledby="project-directories">
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <h2 id="project-directories" className="text-base font-semibold">本地目录</h2>
-          <Button type="button" size="sm" variant="outline" onClick={onAddDirectory} disabled={importing}><FolderPlus />添加目录</Button>
-        </div>
+        <h2 id="project-directories" className="mb-1.5 text-base font-semibold">本地目录</h2>
         <ItemGroup className="divide-y border-y">
           {project.directories.map(dir => (
             <div role="listitem" key={dir.id}>
-              <Item size="sm" className="gap-2 px-2 py-1.5">
+              <Item size="sm" className="flex-nowrap gap-2 px-2 py-1.5">
                 <ItemMedia><Folder aria-hidden="true" className="size-3.5 text-muted-foreground" /></ItemMedia>
                 <ItemContent className="min-w-0 gap-0">
                   <ItemTitle className="block select-text font-normal [overflow-wrap:anywhere]">{dir.path}</ItemTitle>
@@ -53,7 +57,9 @@ export function ProjectDetail(props: ProjectDetailProps) {
                   )}
                 </ItemContent>
                 <ItemActions>
-                  <Button type="button" variant={activeDirectoryId === dir.id ? 'secondary' : 'ghost'} size="sm"
+                  <ProjectIconAction label={activeDirectoryId === dir.id ? '聚焦 Git 面板' : '查看 Git'}
+                    tooltipSide="left"
+                    variant={activeDirectoryId === dir.id ? 'secondary' : 'ghost'}
                     aria-expanded={activeDirectoryId === dir.id}
                     aria-controls={activeDirectoryId === dir.id ? 'git-panel' : undefined}
                     onClick={event => {
@@ -64,8 +70,8 @@ export function ProjectDetail(props: ProjectDetailProps) {
                         onGit({ directoryId: dir.id, name: project.name, path: dir.path })
                       }
                     }}>
-                    <GitBranch />查看 Git
-                  </Button>
+                    <GitBranch aria-hidden="true" />
+                  </ProjectIconAction>
                 </ItemActions>
               </Item>
             </div>
@@ -75,29 +81,34 @@ export function ProjectDetail(props: ProjectDetailProps) {
       <section aria-labelledby="project-requirements">
         <h2 id="project-requirements" className="mb-1.5 text-base font-semibold">关联版本与需求</h2>
         {associations.size ? (
-          <div className="divide-y border-y">
+          <div className="space-y-2">
             {versions.filter(version => associations.has(version.id)).map(version => (
               <section key={version.id}>
-                <h3 className="bg-muted/50 px-2 py-1.5 font-mono text-xs font-medium [overflow-wrap:anywhere]">{version.name}</h3>
-                <ul className="divide-y">
+                <h3 className="flex items-center gap-1.5 py-1.5 ps-1 font-mono text-xs font-medium text-muted-foreground">
+                  <Tag aria-hidden="true" className="size-3.5 shrink-0" />
+                  <span className="min-w-0 wrap-anywhere">{version.name}</span>
+                </h3>
+                <ItemGroup aria-label={`${version.name} 的关联需求`} className="ms-2.5 gap-0.5 border-s ps-2">
                   {associations.get(version.id)?.map(req => {
                     const links = req.projects.filter(link => link.projectId === project.id)
-                    const branches = [...new Set(links.map(link => link.branch || '分支待绑定'))]
+                    const branches = [...new Set(links.map(link => link.branch || '分支待绑定'))].join(' · ')
                     return (
-                      <li key={req.id}>
-                        <Button id={`project-requirement-${req.id}`} type="button" variant="ghost" size="sm" className="h-auto min-h-8 w-full gap-2 px-2 py-1.5 whitespace-normal text-start"
-                          onClick={() => onRequirement(req)}>
-                          <span className="min-w-0 flex-1">
-                            <span className="block font-medium [overflow-wrap:anywhere]">{req.title}</span>
-                            <span className="font-mono text-xs [overflow-wrap:anywhere] block text-muted-foreground">{branches.join(' · ')}</span>
-                          </span>
+                      <Item key={req.id} role="listitem" size="sm" className={projectItemClassName}>
+                        <ItemContent className="min-w-0 gap-0">
+                          <ItemTitle className="block max-w-full">
+                            <button id={`project-requirement-${req.id}`} type="button" className={projectItemTriggerClassName}
+                              onClick={() => onRequirement(req)}>{req.title}</button>
+                          </ItemTitle>
+                          <ItemDescription className="font-mono wrap-anywhere text-wrap" title={branches}>{branches}</ItemDescription>
+                        </ItemContent>
+                        <ItemActions className="shrink-0">
                           <Status state={req.state} />
-                          <ChevronRight className="size-3 shrink-0 text-muted-foreground" />
-                        </Button>
-                      </li>
+                          <ChevronRight aria-hidden="true" className="size-3 text-muted-foreground" />
+                        </ItemActions>
+                      </Item>
                     )
                   })}
-                </ul>
+                </ItemGroup>
               </section>
             ))}
           </div>

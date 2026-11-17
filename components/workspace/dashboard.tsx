@@ -28,7 +28,7 @@ export function Dashboard({ data, onCreate, onVersion, onProjects, onProject }: 
   return (
     <section className="@container min-w-0">
       <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">版本工作台</h1>
+        <h1 tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">版本工作台</h1>
         <Button type="button" size="sm" onClick={onCreate}><Plus />新建版本</Button>
       </header>
 

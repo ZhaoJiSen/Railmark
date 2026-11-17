@@ -99,7 +99,11 @@ func InspectGit(ctx context.Context, d Directory, base string, details bool) Git
 			state.HistoryIssue = "无法读取当前分支的提交"
 		}
 	}
-	loadReleaseCommits(ctx, d.Path, base, &state)
+	if base != "" {
+		comparison := compareGitHistory(ctx, d.Path, state.Head, base)
+		state.ReleaseBase, state.ReleaseCommits, state.MoreRelease, state.BaseIssue =
+			comparison.Base, comparison.Commits, comparison.More, comparison.Issue
+	}
 	return state
 }
 
@@ -145,27 +149,25 @@ func parseGitStatus(output string, state *GitSnapshot) {
 	}
 }
 
-func loadReleaseCommits(ctx context.Context, path, base string, state *GitSnapshot) {
-	if base == "" {
-		return
-	}
-	if state.Head == "" {
-		state.BaseIssue = "当前分支还没有提交"
-		return
+func compareGitHistory(ctx context.Context, path, head, base string) GitComparison {
+	result := GitComparison{Commits: []GitCommit{}}
+	if head == "" {
+		result.Issue = "当前分支还没有提交"
+		return result
 	}
 
 	output, err := git(ctx, path, "rev-parse", "--verify", "--end-of-options", base+"^{commit}")
 	if err != nil {
-		state.BaseIssue = "本地找不到目标合入分支 " + base
-		return
+		result.Issue = "本地找不到目标合入分支 " + base
+		return result
 	}
 	baseHash := gitLine(output)
-	commits, more, err := gitCommits(ctx, path, baseHash+".."+state.Head, gitHistoryLimit, 0)
+	commits, more, err := gitCommits(ctx, path, baseHash+".."+head, gitHistoryLimit, 0)
 	if err != nil {
-		state.BaseIssue = "无法读取相对目标分支的提交"
-		return
+		result.Issue = "无法读取相对目标分支的提交"
+		return result
 	}
-	state.ReleaseBase, state.ReleaseCommits, state.MoreRelease = baseHash, commits, more
+	return GitComparison{Base: baseHash, Commits: commits, More: more}
 }
 
 func gitCommits(ctx context.Context, path, revision string, limit, offset int) ([]GitCommit, bool, error) {

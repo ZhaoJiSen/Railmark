@@ -1,37 +1,44 @@
 import { useLayoutEffect, useRef } from 'react'
 
-interface ListPosition {
-  list: string
+export interface ViewPosition {
   top: number
-  triggerId: string
+  triggerId?: string
 }
 
 export function useListReturn(location: string) {
   const viewport = useRef<HTMLDivElement>(null)
-  const positions = useRef(new Map<string, ListPosition>())
+  const versionPositions = useRef(new Map<string, number>())
+  const pendingReturn = useRef<{ location: string, position: ViewPosition }>(null)
   const previous = useRef(location)
 
-  function rememberList(detail: string, triggerId: string): void {
-    positions.current.set(detail, { list: location, top: viewport.current?.scrollTop ?? 0, triggerId })
+  function rememberVersion(): void {
+    if (location.startsWith('version:') && viewport.current) {
+      versionPositions.current.set(location, viewport.current.scrollTop)
+    }
+  }
+
+  function capturePosition(triggerId?: string): ViewPosition {
+    return { top: viewport.current?.scrollTop ?? 0, triggerId }
+  }
+
+  function restorePosition(target: string, position: ViewPosition): void {
+    pendingReturn.current = { location: target, position }
   }
 
   useLayoutEffect(() => {
-    const from = previous.current
-    if (from === location) return
+    if (previous.current === location) return
     previous.current = location
-    const saved = positions.current.get(from)
-    const returning = saved?.list === location
-    const entering = positions.current.get(location)?.list === from
+    const pending = pendingReturn.current
+    pendingReturn.current = null
+    const saved = pending?.location === location ? pending.position : undefined
 
-    viewport.current?.scrollTo({ top: returning ? saved.top : 0 })
-    if (returning) {
-      positions.current.delete(from)
-      document.getElementById(saved.triggerId)?.focus({ preventScroll: true })
-    } else {
-      if (!entering) positions.current.clear()
-      viewport.current?.querySelector<HTMLElement>('[data-detail-heading]')?.focus({ preventScroll: true })
-    }
+    viewport.current?.scrollTo({ top: saved?.top ?? versionPositions.current.get(location) ?? 0 })
+    const trigger = saved?.triggerId ? document.getElementById(saved.triggerId) : null
+    const fallback = saved ? '[data-detail-heading], h1[tabindex="-1"]' : '[data-detail-heading]'
+    const headings = Array.from(viewport.current?.querySelectorAll<HTMLElement>(fallback) ?? [])
+    const target = trigger?.getClientRects().length ? trigger : headings.find(heading => heading.getClientRects().length)
+    target?.focus({ preventScroll: true })
   }, [location])
 
-  return { viewport, rememberList }
+  return { viewport, rememberVersion, capturePosition, restorePosition }
 }

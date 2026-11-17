@@ -1,4 +1,4 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from 'react'
+import { type ReactNode, type RefObject, useLayoutEffect, useRef, useState } from 'react'
 import type { Layout } from 'react-resizable-panels'
 import type { GitCommit } from '../../lib/mygo'
 import { cn } from '../../lib/utils'
@@ -9,19 +9,19 @@ import { CommitList, type GitCommitGroup } from './git-commits'
 import { GitScrollArea } from './git-scroll-area'
 
 export function GitHistoryPane({
-  directoryId, groups, branchLabel, children, historyLayout, onHistoryLayoutChange, filesLayout, onFilesLayoutChange,
+  directoryId, groups, branchLabel, children, history, historyLayout, onHistoryLayoutChange, filesLayout, onFilesLayoutChange,
 }: {
   directoryId: number
   groups: GitCommitGroup[]
   branchLabel: string
   children: ReactNode
+  history: RefObject<HTMLDivElement | null>
   historyLayout?: Layout
   onHistoryLayoutChange: (layout: Layout) => void
   filesLayout?: Layout
   onFilesLayoutChange: (layout: Layout) => void
 }) {
   const [selection, select] = useState<{ commit: GitCommit, group: number }>()
-  const history = useRef<HTMLDivElement>(null)
   const details = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const moveToDetails = useRef(false)
@@ -37,7 +37,7 @@ export function GitHistoryPane({
       target?.focus({ preventScroll: true })
       trigger.current = null
     }
-  }, [selection, selected])
+  }, [history, selection, selected])
 
   return (
     <div className="@container/git-history h-full min-h-0 min-w-0"

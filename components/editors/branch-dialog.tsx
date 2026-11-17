@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { GitBranch } from '../../lib/mygo'
 import { Desk } from '../../lib/mygo'
 import { readableError } from '../../lib/utils'
+import { localBranchName } from '../../lib/workspace-data'
 import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog'
 import { ErrorLine } from '../ui/form-parts'
@@ -87,7 +88,8 @@ export function BranchDialog({ link, mode, onSelect, onClose, returnFocus }: {
           {branches && (
             <BranchChooser label={creating ? '搜索起点分支' : '搜索本地开发分支'} disabled={busy} autoFocus={!creating}
               branches={creating ? branches : branches.filter(branch => !branch.remote)}
-              selectedRef={creating ? startRef : `refs/heads/${link.branch}`}
+              currentBranch={link.currentBranch}
+              selectedRef={creating ? startRef : `refs/heads/${localBranchName(link.branch)}`}
               onSelect={branch => {
                 if (creating) {
                   setStartRef(branch.ref)
@@ -100,7 +102,7 @@ export function BranchDialog({ link, mode, onSelect, onClose, returnFocus }: {
           {!branches && !error && <p role="status" className="text-xs text-muted-foreground">正在读取分支…</p>}
           <ErrorLine message={error} />
         </div>
-        {creating && <p className="text-xs text-muted-foreground">立即创建本地分支。保存需求后才会关联。</p>}
+        {creating && <p className="text-xs text-muted-foreground">立即创建本地分支。保存后才会关联到需求。</p>}
         <DialogFooter className="flex-row flex-wrap justify-end">
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{creating ? '取消' : '关闭'}</Button>
           {creating && (

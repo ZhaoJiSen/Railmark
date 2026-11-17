@@ -1,4 +1,4 @@
-import type { Project } from './mygo'
+import type { Delivery, Project } from './mygo'
 
 function parentDirectory(path: string): string | undefined {
   const directory = path.replace(/\/+$/, '')
@@ -16,4 +16,22 @@ export function groupProjectsByParent(projects: readonly Project[]): Map<string,
     else folders.set(parent, [project])
   }
   return new Map([...folders].filter(([, siblings]) => siblings.length > 1))
+}
+
+export function deliveryDirectoryLabels(deliveries: Delivery[]): Map<number, string> {
+  const labels = new Map<number, string>()
+  for (const siblings of Map.groupBy(deliveries, delivery => delivery.projectName).values()) {
+    if (siblings.length < 2) continue
+    for (const delivery of siblings) {
+      const parts = delivery.path.split('/').filter(Boolean)
+      for (let depth = 1; depth <= parts.length; depth++) {
+        const suffix = parts.slice(-depth).join('/')
+        if (depth === parts.length || siblings.every(item => item === delivery || !item.path.endsWith('/' + suffix))) {
+          labels.set(delivery.directoryId, depth === parts.length ? delivery.path : '…/' + suffix)
+          break
+        }
+      }
+    }
+  }
+  return labels
 }

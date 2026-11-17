@@ -11,8 +11,11 @@ func summarizeChanges(old Requirement, input SaveRequirementInput, deliveries []
 	if old.Title != input.Title {
 		changes = append(changes, transition("标题", old.Title, input.Title))
 	}
+	if old.Category != input.Category {
+		changes = append(changes, transition("需求类型", requirementCategoryLabels[old.Category], requirementCategoryLabels[input.Category]))
+	}
 	if old.Direction != input.Direction {
-		changes = append(changes, transition("业务方向", old.Direction, input.Direction))
+		changes = append(changes, transition("方向", old.Direction, input.Direction))
 	}
 	if old.VersionID != input.VersionID {
 		changes = append(changes, transition("版本", oldVersion, newVersion))
@@ -50,7 +53,7 @@ func summarizeChanges(old Requirement, input SaveRequirementInput, deliveries []
 		}
 		for _, field := range []struct{ label, before, after string }{
 			{"进度", stateLabels[before.State], stateLabels[d.State]},
-			{"开发分支", before.Branch, d.Branch},
+			{"开发分支", localBranchName(before.Branch), d.Branch},
 			{"目标合入分支", before.BaseBranch, d.BaseBranch},
 			{"预期推送目标", before.PushTarget, d.PushTarget},
 		} {
@@ -95,10 +98,11 @@ func addBranchConflicts(data *Workspace) {
 			continue
 		}
 		for _, d := range r.Projects {
-			if d.Branch == "" {
+			branch := localBranchName(d.Branch)
+			if branch == "" {
 				continue
 			}
-			key := branchKey{d.ProjectID, d.Branch}
+			key := branchKey{d.ProjectID, branch}
 			if bindings[key] == nil {
 				bindings[key] = make(map[int64]string)
 			}
@@ -112,7 +116,7 @@ func addBranchConflicts(data *Workspace) {
 		}
 		for j := range r.Projects {
 			d := &r.Projects[j]
-			for id, name := range bindings[branchKey{d.ProjectID, d.Branch}] {
+			for id, name := range bindings[branchKey{d.ProjectID, localBranchName(d.Branch)}] {
 				if id != r.VersionID {
 					d.Conflicts = append(d.Conflicts, name)
 				}

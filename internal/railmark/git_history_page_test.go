@@ -36,14 +36,25 @@ func TestGitHistoryPageKeepsOriginalHeadAndBase(t *testing.T) {
 	}
 
 	initial := InspectGit(ctx, repo, "release", true)
-	branch, err := ReadGitHistory(ctx, repo, "refs/heads/feature")
-	if err != nil || branch.Head != initial.Head || !branch.More || !initial.MoreRelease || initial.ReleaseBase == "" {
-		t.Fatalf("unexpected first page: %v, %+v", err, initial)
+	run("switch", "release")
+	branch, err := ReadGitHistory(ctx, repo, "refs/heads/feature", "release")
+	if err != nil || branch.Head != initial.Head || !branch.More || branch.Comparison == nil ||
+		branch.Comparison.Base == "" || branch.Comparison.Base != initial.ReleaseBase || !branch.Comparison.More ||
+		branch.Comparison.Issue != "" || len(branch.Comparison.Commits) != gitHistoryLimit {
+		t.Fatalf("unexpected selected-branch history: %+v (%v)", branch, err)
 	}
+	missing, err := ReadGitHistory(ctx, repo, "refs/heads/feature", "missing-release")
+	if err != nil || len(missing.Commits) == 0 || missing.Comparison == nil || missing.Comparison.Issue == "" {
+		t.Fatalf("missing base should keep full history: %+v (%v)", missing, err)
+	}
+	if status := InspectGit(ctx, repo, "", false); status.Branch != "release" {
+		t.Fatalf("reading the selected branch changed the checkout: %s", status.Branch)
+	}
+	run("switch", "feature")
 	commit("Added after the first page")
 	run("branch", "-f", "release", initial.Head)
 
-	page, err := ReadGitHistoryPage(ctx, repo, initial.Head, initial.ReleaseBase, gitHistoryLimit)
+	page, err := ReadGitHistoryPage(ctx, repo, branch.Head, branch.Comparison.Base, gitHistoryLimit)
 	if err != nil || page.More || len(page.Commits) != 2 ||
 		page.Commits[0].Subject != "Feature 2" || page.Commits[1].Subject != "Feature 1" {
 		t.Fatalf("unexpected range page: %+v (%v)", page, err)

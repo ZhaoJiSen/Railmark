@@ -8,7 +8,10 @@ export interface GitRequest {
   directoryId: number
   name: string
   path: string
+  requirementId?: number
   delivery?: Delivery
+  resume?: { branchRef?: string, scrollTop: number, focusId: string }
 }
 
-export type GitByDirectory = Record<number, GitSnapshot | undefined>
+export type GitStatus = Pick<GitSnapshot, 'directoryId' | 'checkedAt' | 'issue' | 'branch' | 'head' |
+  'upstream' | 'pushTarget' | 'trackingKnown' | 'ahead' | 'behind' | 'staged' | 'unstaged' | 'untracked' | 'conflicted'>

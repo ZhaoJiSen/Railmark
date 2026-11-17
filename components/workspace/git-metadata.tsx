@@ -1,25 +1,25 @@
 import { ArrowDown, ArrowUp, ChevronRight, GitBranch } from 'lucide-react'
 import type { GitSnapshot } from '../../lib/mygo'
-import type { GitRequest } from '../../lib/types'
+import type { GitRequest, GitStatus } from '../../lib/types'
 import { Button } from '../ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
-export function GitMetadata({ request, snapshot }: { request: GitRequest, snapshot: GitSnapshot }) {
+export function GitMetadata({ request, snapshot, status }: { request: GitRequest, snapshot: GitSnapshot, status: GitStatus }) {
   const { delivery } = request
-  const branch = snapshot.branch || (snapshot.head ? '分离 HEAD' : '未产生提交')
+  const branch = status.branch || (status.head ? '分离 HEAD' : '未产生提交')
   const changes = [
-    { label: '冲突', count: snapshot.conflicted },
-    { label: '暂存', count: snapshot.staged },
-    { label: '未暂存', count: snapshot.unstaged },
-    { label: '未跟踪', count: snapshot.untracked },
+    { label: '冲突', count: status.conflicted },
+    { label: '暂存', count: status.staged },
+    { label: '未暂存', count: status.unstaged },
+    { label: '未跟踪', count: status.untracked },
   ].filter(item => item.count > 0)
   const rows = [
     ['当前分支', branch],
     ...(delivery ? [['预期开发分支', delivery.branch || '待绑定'], ['目标合入分支', delivery.baseBranch || '未配置']] : []),
-    ['本地跟踪上游', snapshot.upstream || '未配置'],
+    ['本地跟踪上游', status.upstream || '未配置'],
     ...(delivery?.pushTarget ? [['预期推送目标', delivery.pushTarget]] : []),
-    ['默认推送目标', snapshot.pushTarget || '未解析'],
+    ['默认推送目标', status.pushTarget || '未解析'],
     ['远程仓库', snapshot.remote || '未配置'],
   ]
 
@@ -46,10 +46,10 @@ export function GitMetadata({ request, snapshot }: { request: GitRequest, snapsh
               {label} <span className="font-medium tabular-nums">{count}</span>
             </span>
           ))}
-          {snapshot.trackingKnown && (
-            <span className="inline-flex items-center gap-0.5 tabular-nums" title={`相对 ${snapshot.upstream}`}>
-              <ArrowUp aria-hidden="true" className="size-3" /><span className="sr-only">领先 </span>{snapshot.ahead}
-              <ArrowDown aria-hidden="true" className="ms-1 size-3" /><span className="sr-only">落后 </span>{snapshot.behind}
+          {status.trackingKnown && (
+            <span className="inline-flex items-center gap-0.5 tabular-nums" title={`相对 ${status.upstream}`}>
+              <ArrowUp aria-hidden="true" className="size-3" /><span className="sr-only">领先 </span>{status.ahead}
+              <ArrowDown aria-hidden="true" className="ms-1 size-3" /><span className="sr-only">落后 </span>{status.behind}
             </span>
           )}
         </div>

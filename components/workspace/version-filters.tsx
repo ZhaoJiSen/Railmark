@@ -1,6 +1,6 @@
-import { RefreshCw, Search, X } from 'lucide-react'
+import { Check, RefreshCw, Search, X } from 'lucide-react'
 import { useRef } from 'react'
-import { STATES } from '../../lib/constants'
+import { REQUIREMENT_CATEGORIES, STATES } from '../../lib/constants'
 import type { Project } from '../../lib/mygo'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
@@ -11,18 +11,22 @@ interface VersionFiltersProps {
   query: string
   projectId: number
   state: string
+  category: string
   projects: Project[]
   checking: boolean
+  recentlyChecked: boolean
   showIssues: boolean
   onClearIssues: () => void
   onQuery: (value: string) => void
   onProject: (value: number) => void
   onState: (value: string) => void
+  onCategory: (value: string) => void
   onRefresh: () => void
 }
 
 export function VersionFilters({
-  query, projectId, state, projects, checking, showIssues, onClearIssues, onQuery, onProject, onState, onRefresh,
+  query, projectId, state, category, projects, checking, recentlyChecked, showIssues,
+  onClearIssues, onQuery, onProject, onState, onCategory, onRefresh,
 }: VersionFiltersProps) {
   const search = useRef<HTMLInputElement>(null)
 
@@ -42,6 +46,8 @@ export function VersionFilters({
         options={[{ value: 'all', label: '全部状态' }, ...STATES.map(item => ({
           value: item.id, label: item.label,
         }))]} />
+      <OptionSelect label="按类型筛选" value={category} onChange={onCategory}
+        options={[{ value: 'all', label: '全部类型' }, ...REQUIREMENT_CATEGORIES]} />
       {showIssues && (
         <Button type="button" variant="secondary" aria-label="清除 Git 异常筛选" onClick={() => {
           onClearIssues()
@@ -50,9 +56,13 @@ export function VersionFilters({
           仅看 Git 异常<X />
         </Button>
       )}
-      <Button type="button" variant="outline" onClick={onRefresh} disabled={checking}>
-        <RefreshCw className={cn(checking && 'motion-safe:animate-spin')} />{checking ? '核对中' : '核对 Git'}
+      <Button type="button" variant="outline" onClick={onRefresh} disabled={checking} aria-busy={checking}>
+        {recentlyChecked ? <Check aria-hidden="true" /> : (
+          <RefreshCw aria-hidden="true" className={cn(checking && 'motion-safe:animate-spin')} />
+        )}
+        核对 Git
       </Button>
+      <span role="status" className="sr-only">{checking ? '正在核对 Git' : recentlyChecked ? 'Git 核对完成' : ''}</span>
     </div>
   )
 }

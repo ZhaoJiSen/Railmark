@@ -60,6 +60,13 @@ export interface GitCommitFiles {
   files: GitChangedFile[];
 }
 
+export interface GitComparison {
+  base: string;
+  commits: GitCommit[];
+  more: boolean;
+  issue: string;
+}
+
 export interface GitFilePatch {
   patch: string;
   issue: string;
@@ -69,6 +76,7 @@ export interface GitHistory {
   head: string;
   commits: GitCommit[];
   more: boolean;
+  comparison?: GitComparison;
 }
 
 export interface GitSnapshot {
@@ -127,6 +135,7 @@ export interface Requirement {
   id: number;
   versionId: number;
   title: string;
+  category: string;
   direction: string;
   state: string;
   background: string;
@@ -142,6 +151,7 @@ export interface SaveRequirementInput {
   id: number;
   versionId: number;
   title: string;
+  category: string;
   direction: string;
   state: string;
   background: string;
@@ -165,6 +175,7 @@ export interface Workspace {
   requirements: Requirement[];
   projects: Project[];
   lastVersionId: number;
+  projectGrouping: boolean;
 }
 
 // ---- Services ----
@@ -182,6 +193,9 @@ export const Desk = {
   createGitBranch(directoryID: number, path: string, name: string, startRef: string): Promise<void> {
     return call("Desk.CreateGitBranch", directoryID, path, name, startRef);
   },
+  deleteVersion(id: number, name: string, requirementCount: number): Promise<Workspace> {
+    return call("Desk.DeleteVersion", id, name, requirementCount);
+  },
   gitBranches(directoryID: number, path: string): Promise<GitBranch[]> {
     return call("Desk.GitBranches", directoryID, path);
   },
@@ -191,8 +205,8 @@ export const Desk = {
   gitFilePatch(directoryID: number, hash: string, index: number): Promise<GitFilePatch> {
     return call("Desk.GitFilePatch", directoryID, hash, index);
   },
-  gitHistory(directoryID: number, ref: string): Promise<GitHistory> {
-    return call("Desk.GitHistory", directoryID, ref);
+  gitHistory(directoryID: number, ref: string, base: string): Promise<GitHistory> {
+    return call("Desk.GitHistory", directoryID, ref, base);
   },
   gitHistoryPage(directoryID: number, head: string, exclude: string, offset: number): Promise<GitHistory> {
     return call("Desk.GitHistoryPage", directoryID, head, exclude, offset);
@@ -232,6 +246,15 @@ export const Desk = {
   },
   setAppearance(mode: string): Promise<void> {
     return call("Desk.SetAppearance", mode);
+  },
+  setProjectGrouping(enabled: boolean): Promise<void> {
+    return call("Desk.SetProjectGrouping", enabled);
+  },
+  updateDeliveryField(id: number, directoryID: number, group: string, field: string, value: string): Promise<Workspace> {
+    return call("Desk.UpdateDeliveryField", id, directoryID, group, field, value);
+  },
+  updateRequirementState(id: number, state: string): Promise<Workspace> {
+    return call("Desk.UpdateRequirementState", id, state);
   },
   workspace(): Promise<Workspace> {
     return call("Desk.Workspace");

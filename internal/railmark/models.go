@@ -35,6 +35,7 @@ type Requirement struct {
 	ID         int64      `json:"id"`
 	VersionID  int64      `json:"versionId"`
 	Title      string     `json:"title"`
+	Category   string     `json:"category"`
 	Direction  string     `json:"direction"`
 	State      string     `json:"state"`
 	Background string     `json:"background"`
@@ -63,6 +64,7 @@ type SaveRequirementInput struct {
 	ID         int64         `json:"id"`
 	VersionID  int64         `json:"versionId"`
 	Title      string        `json:"title"`
+	Category   string        `json:"category"`
 	Direction  string        `json:"direction"`
 	State      string        `json:"state"`
 	Background string        `json:"background"`
@@ -92,10 +94,11 @@ type LogEntry struct {
 }
 
 type Workspace struct {
-	Versions      []Version     `json:"versions"`
-	Requirements  []Requirement `json:"requirements"`
-	Projects      []Project     `json:"projects"`
-	LastVersionID int64         `json:"lastVersionId"`
+	Versions        []Version     `json:"versions"`
+	Requirements    []Requirement `json:"requirements"`
+	Projects        []Project     `json:"projects"`
+	LastVersionID   int64         `json:"lastVersionId"`
+	ProjectGrouping bool          `json:"projectGrouping"`
 }
 
 type GitSnapshot struct {
@@ -142,7 +145,15 @@ type GitBranch struct {
 }
 
 type GitHistory struct {
-	Head    string      `json:"head"`
+	Head       string         `json:"head"`
+	Commits    []GitCommit    `json:"commits"`
+	More       bool           `json:"more"`
+	Comparison *GitComparison `json:"comparison,omitempty"`
+}
+
+type GitComparison struct {
+	Base    string      `json:"base"`
 	Commits []GitCommit `json:"commits"`
 	More    bool        `json:"more"`
+	Issue   string      `json:"issue"`
 }

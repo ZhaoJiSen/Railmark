@@ -1,21 +1,25 @@
-import { GitBranch, Plus } from 'lucide-react'
+import { CircleCheck, GitBranch, Plus } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { localBranchName } from '../../lib/workspace-data'
 import { Button } from '../ui/button'
+import { FieldDescription } from '../ui/field'
 import { BranchDialog } from './branch-dialog'
 import { BranchNameField } from './branch-name-field'
 import type { LinkDraft } from './link-draft'
 
-export function DevelopmentBranchFields({ id, link, onChange }: {
+export function DevelopmentBranchFields({ id, label = '预期开发分支（选填）', link, onChange }: {
   id: string
+  label?: string
   link: LinkDraft
   onChange: (link: LinkDraft) => void
 }) {
   const [mode, setMode] = useState<'select' | 'create'>()
+  const [createdBranch, setCreatedBranch] = useState('')
   const trigger = useRef<HTMLButtonElement>(null)
 
   return (
     <div className="min-w-0 space-y-1.5">
-      <BranchNameField id={id} label="预期开发分支（选填）" value={link.branch}
+      <BranchNameField id={id} label={label} value={link.branch}
         onChange={branch => onChange({ ...link, branch })} placeholder="待绑定" />
       <div className="flex flex-wrap gap-1">
         <Button type="button" size="xs" variant="outline" onClick={event => {
@@ -27,9 +31,22 @@ export function DevelopmentBranchFields({ id, link, onChange }: {
           setMode('create')
         }}><Plus />新建分支</Button>
       </div>
+      <div role="status">
+        {createdBranch && (
+          <FieldDescription className="flex items-start gap-1.5 text-xs wrap-anywhere">
+            <CircleCheck aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+            {localBranchName(link.branch) === createdBranch
+              ? <span>本地分支已创建，保存后会关联到需求。</span>
+              : <span>本地分支 <code className="font-mono text-foreground">{createdBranch}</code> 已创建。</span>}
+          </FieldDescription>
+        )}
+      </div>
       {mode && (
         <BranchDialog link={link} mode={mode} returnFocus={trigger.current} onClose={() => setMode(undefined)}
-          onSelect={branch => onChange({ ...link, branch })} />
+          onSelect={branch => {
+            if (mode === 'create') setCreatedBranch(branch)
+            onChange({ ...link, branch })
+          }} />
       )}
     </div>
   )

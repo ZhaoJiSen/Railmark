@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS requirements (
     id INTEGER PRIMARY KEY,
     version_id INTEGER NOT NULL REFERENCES versions(id),
     title TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT '' CHECK (category IN ('', 'business', 'technical')),
     direction TEXT NOT NULL DEFAULT '',
     state TEXT NOT NULL CHECK (state IN ('todo', 'in_progress', 'testing', 'done')),
     background TEXT NOT NULL DEFAULT '',

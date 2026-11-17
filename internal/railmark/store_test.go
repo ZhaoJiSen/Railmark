@@ -115,9 +115,13 @@ func TestSaveRequirementNeedsExistingDirectoryAndPreservesHistory(t *testing.T) 
 		t.Fatal(err)
 	}
 	frontend := data.Requirements[0].Projects[0]
+	if _, err := store.db.ExecContext(ctx, "UPDATE deliveries SET branch=? WHERE requirement_id=? AND directory_id=?",
+		"refs/heads/"+frontend.Branch, id, frontend.DirectoryID); err != nil {
+		t.Fatal(err)
+	}
 	otherReq, err := store.SaveRequirement(ctx, SaveRequirementInput{
 		VersionID: second, Title: "件量优化", State: "todo",
-		Projects: []ProjectLink{{DirectoryID: frontend.DirectoryID, Group: "frontend", State: "todo", Branch: frontend.Branch}},
+		Projects: []ProjectLink{{DirectoryID: frontend.DirectoryID, Group: "frontend", State: "todo", Branch: "refs/heads/" + frontend.Branch}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -146,8 +150,8 @@ func TestSaveRequirementNeedsExistingDirectoryAndPreservesHistory(t *testing.T) 
 		t.Fatalf("preview did not match the saved project: %+v", registered)
 	}
 	moved := data.Requirements[slices.IndexFunc(data.Requirements, func(r Requirement) bool { return r.ID == otherReq })]
-	if !slices.Equal(moved.Projects[0].Conflicts, []string{"5.27.0"}) {
-		t.Fatalf("missing cross-version warning: %+v", moved)
+	if moved.Projects[0].Branch != frontend.Branch || !slices.Equal(moved.Projects[0].Conflicts, []string{"5.27.0"}) {
+		t.Fatalf("missing normalized branch or cross-version warning: %+v", moved)
 	}
 	logs, err := reopened.Logs(ctx, id)
 	if err != nil {

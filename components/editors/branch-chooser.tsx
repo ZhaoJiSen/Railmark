@@ -1,10 +1,12 @@
 import { Check, GitBranch, GitFork } from 'lucide-react'
 import type { GitBranch as Branch } from '../../lib/mygo'
+import { Badge } from '../ui/badge'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command'
 
-export function BranchChooser({ branches, selectedRef, onSelect, disabled, label, autoFocus }: {
+export function BranchChooser({ branches, selectedRef, currentBranch, onSelect, disabled, label, autoFocus }: {
   branches: Branch[]
   selectedRef: string
+  currentBranch?: string
   onSelect: (branch: Branch) => void
   disabled?: boolean
   label: string
@@ -26,6 +28,7 @@ export function BranchChooser({ branches, selectedRef, onSelect, disabled, label
                 disabled={disabled} onSelect={() => onSelect(branch)} className="items-start">
                 {branch.remote ? <GitFork aria-hidden="true" /> : <GitBranch aria-hidden="true" />}
                 <span className="min-w-0 flex-1 font-mono text-xs wrap-anywhere">{branch.name}</span>
+                {!branch.remote && branch.name === currentBranch && <Badge variant="outline">当前检出</Badge>}
                 {selectedRef === branch.ref && <Check aria-label="已选择" />}
               </CommandItem>
             ))}

@@ -43,6 +43,11 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("创建数据库表：%w", err)
 	}
+	if err := migrateRequirementCategory(tx); err != nil {
+		tx.Rollback()
+		db.Close()
+		return nil, fmt.Errorf("升级需求分类：%w", err)
+	}
 	if err := tx.Commit(); err != nil {
 		db.Close()
 		return nil, err
@@ -87,8 +92,16 @@ func (s *Store) Workspace(ctx context.Context) (Workspace, error) {
 		return Workspace{}, err
 	}
 	defer tx.Rollback()
+	data, err := readWorkspace(ctx, tx)
+	if err != nil {
+		return data, err
+	}
+	return data, tx.Commit()
+}
 
+func readWorkspace(ctx context.Context, tx *sql.Tx) (Workspace, error) {
 	var data Workspace
+	var err error
 	data.Versions, err = readRows(ctx, tx, scanVersion, versionSelect+" ORDER BY state, id DESC")
 	if err != nil {
 		return data, err
@@ -139,11 +152,11 @@ func (s *Store) Workspace(ctx context.Context) (Workspace, error) {
 	}
 	addBranchConflicts(&data)
 
-	err = tx.QueryRowContext(ctx, "SELECT value FROM preferences WHERE key = 'last_version'").Scan(&data.LastVersionID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return data, err
-	}
-	return data, tx.Commit()
+	err = tx.QueryRowContext(ctx, `SELECT
+		COALESCE((SELECT value FROM preferences WHERE key='last_version'), 0),
+		COALESCE((SELECT value FROM preferences WHERE key='project_grouping'), 0) = 1`).
+		Scan(&data.LastVersionID, &data.ProjectGrouping)
+	return data, err
 }
 
 const versionSelect = "SELECT id, name, state, start_date, release_date, description FROM versions"
@@ -201,10 +214,16 @@ func (s *Store) SaveVersion(ctx context.Context, input Version) (int64, error) {
 }
 
 func (s *Store) SelectVersion(ctx context.Context, id int64) error {
-	if _, err := scanVersion(s.db.QueryRowContext(ctx, versionSelect+" WHERE id=?", id)); err != nil {
+	result, err := s.db.ExecContext(ctx, `INSERT INTO preferences (key, value)
+		SELECT 'last_version', id FROM versions WHERE id=?
+		ON CONFLICT(key) DO UPDATE SET value=excluded.value`, id)
+	if err != nil {
 		return err
 	}
-	_, err := s.db.ExecContext(ctx, "INSERT INTO preferences (key, value) VALUES ('last_version', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", id)
+	count, err := result.RowsAffected()
+	if err == nil && count == 0 {
+		return errors.New("版本已不存在")
+	}
 	return err
 }
 

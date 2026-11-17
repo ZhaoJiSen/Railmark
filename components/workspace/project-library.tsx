@@ -4,15 +4,18 @@ import { ChevronRight, Folder, FolderGit2, FolderPlus, Folders, Search } from 'l
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Project, Requirement } from '../../lib/mygo'
+import { readableError } from '../../lib/utils'
 import { groupProjectsByParent } from '../../lib/project-directory-groups'
 import { matchesQuery } from '../../lib/workspace-data'
 import { useWorkspace } from '../../lib/workspace-store'
 import { Button } from '../ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
+import { ErrorLine } from '../ui/form-parts'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '../ui/item'
 import { Toggle } from '../ui/toggle'
 import { EmptyPanel } from './empty-panel'
+import { projectItemClassName, projectItemTriggerClassName } from './project-item'
 
 export function ProjectLibrary({ projects, requirements, onOpen, onImport, importing }: {
   projects: Project[]
@@ -22,7 +25,9 @@ export function ProjectLibrary({ projects, requirements, onOpen, onImport, impor
   importing: boolean
 }) {
   const [query, setQuery] = useState('')
-  const groupByDirectory = useWorkspace(state => state.projectGrouping)
+  const [savingGrouping, setSavingGrouping] = useState(false)
+  const [groupingError, setGroupingError] = useState('')
+  const groupByDirectory = useWorkspace(state => state.data?.projectGrouping ?? false)
   const setGroupByDirectory = useWorkspace(state => state.setProjectGrouping)
   const directoryGroups = groupProjectsByParent(projects)
   const filtered = projects.filter(project => matchesQuery(query, project.name,
@@ -42,13 +47,27 @@ export function ProjectLibrary({ projects, requirements, onOpen, onImport, impor
     }
   }
 
+  async function changeGrouping(enabled: boolean): Promise<void> {
+    if (savingGrouping) return
+    setSavingGrouping(true)
+    setGroupingError('')
+    try {
+      await setGroupByDirectory(enabled)
+    } catch (error) {
+      setGroupingError(`无法保存目录分组设置。 ${readableError(error)}`)
+    } finally {
+      setSavingGrouping(false)
+    }
+  }
+
   return (
     <section>
       <header className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">本地项目</h1>
+        <h1 tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">本地项目</h1>
         <div className="flex flex-wrap items-center gap-1.5">
           {directoryGroups.size > 0 && (
-            <Toggle size="sm" pressed={groupByDirectory} onPressedChange={setGroupByDirectory}>
+            <Toggle size="sm" pressed={groupByDirectory} aria-disabled={savingGrouping} aria-busy={savingGrouping}
+              onPressedChange={enabled => void changeGrouping(enabled)}>
               <Folders aria-hidden="true" className="size-3.5" />按目录分组
             </Toggle>
           )}
@@ -62,8 +81,9 @@ export function ProjectLibrary({ projects, requirements, onOpen, onImport, impor
           <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
         </InputGroup>
       )}
+      <ErrorLine message={groupingError} />
       {filtered.length ? (
-        <ItemGroup className="divide-y border-y">
+        <ItemGroup className="gap-0.5" aria-label="项目列表">
           {folders.map(folder => (
             <ProjectFolder key={folder.parent} parent={folder.parent} query={query.trim().toLowerCase()} count={folder.projects.length}>
               {folder.projects.map(project => (
@@ -92,24 +112,28 @@ function ProjectFolder({ parent, query, count, children }: {
   const name = parent.slice(parent.lastIndexOf('/') + 1) || parent
 
   return (
-    <div role="listitem">
-      <Collapsible key={query} defaultOpen>
-        <CollapsibleTrigger asChild>
-          <Button type="button" variant="ghost" size="sm" className="group h-auto min-h-7 w-full px-2 py-1 text-start">
-            <ChevronRight aria-hidden="true" className="size-3 text-muted-foreground group-aria-expanded:rotate-90 motion-safe:transition-transform" />
-            <Folder aria-hidden="true" className="size-3.5 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate" title={parent}>
-              {name}
-              {name !== parent && <span className="ms-2 text-xs font-normal text-muted-foreground">{parent}</span>}
-            </span>
-            <span className="shrink-0 text-xs font-normal text-muted-foreground">{count} 个项目</span>
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <ItemGroup className="divide-y ps-5">{children}</ItemGroup>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
+    <Collapsible key={query} role="listitem" defaultOpen className="group/folder">
+      <Item size="sm" className={projectItemClassName}>
+        <ItemMedia className="!self-center !translate-y-0 gap-1.5 text-muted-foreground">
+          <ChevronRight aria-hidden="true" className="size-3 group-data-[state=open]/folder:rotate-90 motion-safe:transition-transform" />
+          <Folder aria-hidden="true" className="size-3.5" />
+        </ItemMedia>
+        <ItemContent className="min-w-0 gap-0">
+          <ItemTitle className="block max-w-full">
+            <CollapsibleTrigger asChild>
+              <button type="button" className={projectItemTriggerClassName}>{name}</button>
+            </CollapsibleTrigger>
+          </ItemTitle>
+          {name !== parent && <ItemDescription className="block truncate">{parent}</ItemDescription>}
+        </ItemContent>
+        <ItemActions className="shrink-0 text-xs text-muted-foreground">
+          <span className="whitespace-nowrap tabular-nums">{count} 个项目</span>
+        </ItemActions>
+      </Item>
+      <CollapsibleContent>
+        <ItemGroup className="ms-4 gap-0.5 border-s ps-2" aria-label={`${name}下的项目`}>{children}</ItemGroup>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
@@ -119,22 +143,20 @@ function ProjectRow({ project, count, onOpen }: {
   onOpen: (id: number) => void
 }) {
   return (
-    <div role="listitem">
-      <Item size="sm" asChild>
-        <Button id={`project-link-${project.id}`} type="button" variant="ghost" size="sm"
-          className="h-auto min-h-9 w-full gap-2 px-2 py-1.5 whitespace-normal text-start" onClick={() => onOpen(project.id)}>
-          <ItemMedia><FolderGit2 aria-hidden="true" className="size-3.5 text-muted-foreground" /></ItemMedia>
-          <ItemContent className="min-w-0 gap-0">
-            <ItemTitle className="[overflow-wrap:anywhere]">{project.name}</ItemTitle>
-            <ItemDescription className="truncate">{project.directories[0]?.path}</ItemDescription>
-          </ItemContent>
-          <ItemActions className="flex-wrap justify-end gap-x-2 gap-y-0 text-xs text-muted-foreground">
-            <span className="whitespace-nowrap tabular-nums">{project.directories.length} 个目录</span>
-            <span className="whitespace-nowrap tabular-nums">{count} 条需求</span>
-            <ChevronRight aria-hidden="true" className="size-3" />
-          </ItemActions>
-        </Button>
-      </Item>
-    </div>
+    <Item role="listitem" size="sm" className={projectItemClassName}>
+      <ItemMedia className="!self-center !translate-y-0"><FolderGit2 aria-hidden="true" className="size-3.5 text-muted-foreground" /></ItemMedia>
+      <ItemContent className="min-w-0 gap-0">
+        <ItemTitle className="block max-w-full">
+          <button id={`project-link-${project.id}`} type="button" className={projectItemTriggerClassName}
+            onClick={() => onOpen(project.id)}>{project.name}</button>
+        </ItemTitle>
+        <ItemDescription className="block truncate">{project.directories[0]?.path}</ItemDescription>
+      </ItemContent>
+      <ItemActions className="shrink-0 flex-wrap justify-end gap-x-2 gap-y-0 text-xs text-muted-foreground">
+        <span className="whitespace-nowrap tabular-nums">{project.directories.length} 个目录</span>
+        <span className="whitespace-nowrap tabular-nums">{count} 条需求</span>
+        <ChevronRight aria-hidden="true" className="size-3" />
+      </ItemActions>
+    </Item>
   )
 }

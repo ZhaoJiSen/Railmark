@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const requirementSelect = `SELECT id, version_id, title, direction, state, background, scope, acceptance,
+const requirementSelect = `SELECT id, version_id, title, category, direction, state, background, scope, acceptance,
     source_url, updated_at, COALESCE((SELECT text FROM logs
     WHERE requirement_id=requirements.id ORDER BY id DESC LIMIT 1), '') FROM requirements`
 const deliveryColumns = "dir.id, p.id, p.name, dir.path, d.group_name, d.state, d.branch, d.base_branch, d.push_target"
@@ -16,7 +16,7 @@ const deliveryFrom = " FROM deliveries d JOIN directories dir ON dir.id=d.direct
 
 func scanRequirement(row scanner) (Requirement, error) {
 	var r Requirement
-	err := row.Scan(&r.ID, &r.VersionID, &r.Title, &r.Direction, &r.State, &r.Background, &r.Scope, &r.Acceptance, &r.SourceURL, &r.UpdatedAt, &r.LatestLog)
+	err := row.Scan(&r.ID, &r.VersionID, &r.Title, &r.Category, &r.Direction, &r.State, &r.Background, &r.Scope, &r.Acceptance, &r.SourceURL, &r.UpdatedAt, &r.LatestLog)
 	return r, err
 }
 
@@ -105,17 +105,17 @@ func (s *Store) SaveRequirement(ctx context.Context, input SaveRequirementInput)
 }
 
 func writeRequirement(ctx context.Context, tx *sql.Tx, input SaveRequirementInput, now string) (int64, error) {
-	args := []any{input.VersionID, input.Title, input.Direction, input.State, input.Background, input.Scope, input.Acceptance, input.SourceURL, now}
+	args := []any{input.VersionID, input.Title, input.Category, input.Direction, input.State, input.Background, input.Scope, input.Acceptance, input.SourceURL, now}
 	if input.ID == 0 {
 		res, err := tx.ExecContext(ctx, `INSERT INTO requirements
-            (version_id,title,direction,state,background,scope,acceptance,source_url,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?)`, args...)
+            (version_id,title,category,direction,state,background,scope,acceptance,source_url,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?)`, args...)
 		if err != nil {
 			return 0, err
 		}
 		return res.LastInsertId()
 	}
-	_, err := tx.ExecContext(ctx, `UPDATE requirements SET version_id=?, title=?, direction=?, state=?,
+	_, err := tx.ExecContext(ctx, `UPDATE requirements SET version_id=?, title=?, category=?, direction=?, state=?,
         background=?, scope=?, acceptance=?, source_url=?, updated_at=? WHERE id=?`, append(args, input.ID)...)
 	return input.ID, err
 }

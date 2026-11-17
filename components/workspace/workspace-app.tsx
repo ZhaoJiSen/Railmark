@@ -1,9 +1,10 @@
 'use client';
 
-import { Activity, useEffect, useState } from 'react';
-import type { Project, Requirement } from '../../lib/mygo';
+import { Activity, useEffect, useMemo, useState } from 'react';
+import type { Project } from '../../lib/mygo';
 import { Desk } from '../../lib/mygo';
 import { readableError } from '../../lib/utils';
+import { resolveGitRequest } from '../../lib/workspace-data';
 import { useWorkspace } from '../../lib/workspace-store';
 import type { ProjectEditorInput } from '../editors/project-editor';
 import { ProjectEditor } from '../editors/project-editor';
@@ -22,7 +23,7 @@ import { RequirementDetail } from './requirement-detail';
 import { SearchDialog } from './search-dialog';
 import { Sidebar } from './sidebar';
 import { VersionView } from './version-view';
-import { useListReturn } from './use-list-return';
+import { useWorkspaceNavigation } from './use-workspace-navigation';
 import { WorkspacePanels } from './workspace-panels';
 import { WorkspaceToolbar } from './workspace-toolbar';
 import styles from './workspace.module.scss';
@@ -36,31 +37,25 @@ export function WorkspaceApp() {
     requirementId,
     projectId,
     newRequirementId,
-    git,
+    git: gitRequest,
     setGit,
     reload,
-    openDashboard,
-    openVersion,
-    openRequirement,
-    openProjects,
-    openProject,
   } = useWorkspace();
   const [versionEditor, editVersion] = useState<number>();
-  const [requirementEditor, editRequirement] = useState<number>();
+  const [creatingRequirement, setCreatingRequirement] = useState(false);
   const [projectEditor, editProject] = useState<ProjectEditorInput>();
-  const [requirementProject, setRequirementProject] = useState<number>()
   const [searching, setSearching] = useState(false);
   const [picking, setPicking] = useState(false);
   const [actionError, setActionError] = useState('');
+  const git = useMemo(() => resolveGitRequest(data, gitRequest), [data, gitRequest]);
   const version = data?.versions.find((item) => item.id === versionId);
   const requirement = data?.requirements.find((item) => item.id === requirementId);
   const project = data?.projects.find((item) => item.id === projectId);
   const projectView = view === 'projects' || view === 'project';
-  const modalOpen = versionEditor !== undefined || requirementEditor !== undefined || !!projectEditor;
-  const location = view === 'version' ? `version:${versionId}`
-    : view === 'requirement' ? `requirement:${requirementId}`
-    : view === 'project' ? `project:${projectId}` : view;
-  const { viewport, rememberList } = useListReturn(location);
+  const modalOpen = versionEditor !== undefined || creatingRequirement || !!projectEditor;
+  const { viewport, detailNavigation, showDashboard, showVersion, showRequirement,
+    showProjects, showProject, back, backLabel } =
+    useWorkspaceNavigation({ view, versionId, requirementId, projectId, data });
 
   useEffect(() => {
     void reload().catch(() => {});
@@ -70,6 +65,7 @@ export function WorkspaceApp() {
     if (!data || modalOpen) return;
     function search(event: KeyboardEvent): void {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        if (document.querySelector('[role=alertdialog], [data-slot=dialog-content][data-state=open]')) return;
         event.preventDefault();
         setSearching(true);
       }
@@ -77,21 +73,6 @@ export function WorkspaceApp() {
     window.addEventListener('keydown', search);
     return () => window.removeEventListener('keydown', search);
   }, [data, modalOpen]);
-
-  function showRequirement(item: Requirement): void {
-    const fromProject = view === 'project';
-    setRequirementProject(fromProject ? projectId : undefined);
-    if (fromProject || view === 'version')
-      rememberList(`requirement:${item.id}`, fromProject ? `project-requirement-${item.id}` : `requirement-link-${item.id}`);
-    openRequirement(item.id, item.versionId);
-  }
-
-  function showProject(id: number): void {
-    if (view === 'projects') rememberList(`project:${id}`, `project-link-${id}`);
-    openProject(id);
-  }
-
-  const backToVersion = () => openVersion(versionId);
 
   function reloadThen(navigate?: () => void): void {
     void reload()
@@ -127,8 +108,8 @@ export function WorkspaceApp() {
         area={breadcrumb}
         context={context}
         details={view === 'requirement'}
-        onHome={projectView ? openProjects : openDashboard}
-        onContext={view === 'requirement' ? backToVersion : undefined}
+        onHome={projectView ? showProjects : showDashboard}
+        onContext={view === 'requirement' ? () => showVersion(versionId) : undefined}
         loaded={!!data}
         onActionError={setActionError}
       />
@@ -137,13 +118,15 @@ export function WorkspaceApp() {
           versions={data?.versions ?? []}
           versionId={versionId}
           view={view}
-          onDashboard={openDashboard}
-          onVersion={openVersion}
+          onDashboard={showDashboard}
+          onVersion={showVersion}
           onNewVersion={() => editVersion(0)}
-          onProjects={openProjects}
+          onEditVersion={editVersion}
+          onProjects={showProjects}
         />
         <SidebarInset className='min-h-0 min-w-0'>
-          <WorkspacePanels request={git} onClose={() => setGit(undefined)} onProject={openProject}>
+          <WorkspacePanels request={git} onClose={() => setGit(undefined)}
+            onProject={(id, source) => showProject(id, undefined, source)} onConflict={showRequirement}>
             <ScrollArea viewportProps={{ ref: viewport, className: 'h-auto' }}
               className='grid h-full min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden'>
               <div className={styles.content}>
@@ -180,21 +163,22 @@ export function WorkspaceApp() {
                       <Dashboard
                         data={data}
                         onCreate={() => editVersion(0)}
-                        onVersion={openVersion}
-                        onProjects={openProjects}
-                        onProject={openProject}
+                        onVersion={showVersion}
+                        onProjects={showProjects}
+                        onProject={showProject}
                       />
                     )}
                     {(view === 'version' || view === 'requirement') && version && (
-                      <Activity key={version.id} mode={view === 'version' ? 'visible' : 'hidden'}>
+                      <Activity key={`version:${version.id}`} mode={view === 'version' ? 'visible' : 'hidden'}>
                         <VersionView
                           version={version}
                           requirements={data.requirements.filter(item => item.versionId === version.id)}
                           projects={data.projects}
                           newRequirementId={newRequirementId}
                           onEdit={() => editVersion(version.id)}
-                          onCreate={() => editRequirement(0)}
+                          onCreate={() => setCreatingRequirement(true)}
                           onOpen={showRequirement}
+                          onProject={showProject}
                           onGit={setGit}
                         />
                       </Activity>
@@ -202,12 +186,16 @@ export function WorkspaceApp() {
 
                     {view === 'requirement' && requirement && version && (
                       <RequirementDetail
-                        key={requirement.id}
+                        ref={detailNavigation}
+                        key={`requirement:${requirement.id}`}
                         requirement={requirement}
-                        onBack={requirementProject ? () => openProject(requirementProject) : backToVersion}
-                        backLabel={requirementProject ? '返回项目' : '返回版本'}
-                        onEdit={() => editRequirement(requirement.id)}
+                        projects={data.projects}
+                        requirements={data.requirements}
+                        versions={data.versions}
+                        onBack={back}
+                        backLabel={backLabel}
                         onChanged={() => reloadThen()}
+                        onProject={showProject}
                         onGit={setGit}
                       />
                     )}
@@ -222,7 +210,8 @@ export function WorkspaceApp() {
                         project={project}
                         requirements={data.requirements}
                         versions={data.versions}
-                        onBack={openProjects}
+                        onBack={back}
+                        backLabel={backLabel}
                         activeDirectoryId={git?.directoryId}
                         onRename={() => editProject({ kind: 'rename', project })}
                         onAddDirectory={() => void pickProject(project)}
@@ -245,32 +234,20 @@ export function WorkspaceApp() {
           onClose={() => editVersion(undefined)}
           onSaved={(id) => {
             editVersion(undefined);
-            reloadThen(() => openVersion(id));
+            reloadThen(() => showVersion(id));
           }}
         />
       )}
-      {data && requirementEditor !== undefined && (
+      {data && creatingRequirement && (
         <RequirementEditor
           versionId={versionId}
           versions={data.versions}
           projects={data.projects}
           requirements={data.requirements}
-          requirement={data.requirements.find(
-            (r) => r.id === requirementEditor,
-          )}
-          directions={[
-            ...new Set(
-              data.requirements.map((req) => req.direction).filter(Boolean),
-            ),
-          ].sort()}
-          onClose={() => editRequirement(undefined)}
+          onClose={() => setCreatingRequirement(false)}
           onSaved={(id, targetVersion) => {
-            editRequirement(undefined);
-            reloadThen(() =>
-              requirementEditor === 0
-                ? openVersion(targetVersion, id)
-                : openRequirement(id, targetVersion),
-            );
+            setCreatingRequirement(false);
+            reloadThen(() => showVersion(targetVersion, id));
           }}
         />
       )}
@@ -280,7 +257,7 @@ export function WorkspaceApp() {
           onClose={() => editProject(undefined)}
           onSaved={(id) => {
             editProject(undefined);
-            reloadThen(() => openProject(id));
+            reloadThen(() => showProject(id));
           }}
         />
       )}
@@ -289,7 +266,7 @@ export function WorkspaceApp() {
           data={data}
           onClose={() => setSearching(false)}
           onRequirement={showRequirement}
-          onProject={openProject}
+          onProject={showProject}
         />
       )}
     </SidebarProvider>

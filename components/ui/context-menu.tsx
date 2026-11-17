@@ -11,10 +11,23 @@ function ContextMenu({
 }
 
 function ContextMenuTrigger({
+  disabled,
+  onKeyDown,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Trigger>) {
   return (
-    <ContextMenuPrimitive.Trigger data-slot="context-menu-trigger" {...props} />
+    <ContextMenuPrimitive.Trigger data-slot="context-menu-trigger" aria-haspopup="menu"
+      aria-keyshortcuts={disabled ? undefined : "Shift+F10"} {...props} disabled={disabled}
+      onKeyDown={event => {
+        onKeyDown?.(event)
+        if (disabled || event.defaultPrevented || event.nativeEvent.isComposing) return
+        if (event.key !== "ContextMenu" && !(event.key === "F10" && event.shiftKey)) return
+        event.preventDefault()
+        const rect = event.currentTarget.getBoundingClientRect()
+        event.currentTarget.dispatchEvent(new MouseEvent("contextmenu", {
+          bubbles: true, cancelable: true, clientX: rect.left + 16, clientY: rect.bottom,
+        }))
+      }} />
   )
 }
 

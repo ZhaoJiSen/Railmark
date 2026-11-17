@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 export function DiscardChangesDialog({ onKeep, onDiscard }: { onKeep: () => void, onDiscard: () => void }) {
   const opener = useRef<HTMLElement>(null)
+  const discarded = useRef(false)
 
   return (
     <Dialog open onOpenChange={open => { if (!open) onKeep() }}>
@@ -13,7 +14,7 @@ export function DiscardChangesDialog({ onKeep, onDiscard }: { onKeep: () => void
         }}
         onCloseAutoFocus={event => {
           event.preventDefault()
-          if (opener.current?.closest('[data-slot="sheet-content"][data-state="open"]')) {
+          if (!discarded.current && opener.current?.isConnected && !opener.current.closest('[data-state="closed"][data-slot="sheet-content"]')) {
             opener.current.focus({ preventScroll: true })
           }
         }}
@@ -24,7 +25,10 @@ export function DiscardChangesDialog({ onKeep, onDiscard }: { onKeep: () => void
         </DialogHeader>
         <DialogFooter className="flex-row justify-end">
           <Button type="button" variant="outline" onClick={onKeep}>继续编辑</Button>
-          <Button type="button" variant="destructive" onClick={onDiscard}>放弃修改</Button>
+          <Button type="button" variant="destructive" onClick={() => {
+            discarded.current = true
+            onDiscard()
+          }}>放弃修改</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

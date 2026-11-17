@@ -70,7 +70,7 @@ func TestInspectGitAndReuseLinkedWorktree(t *testing.T) {
 		!strings.Contains(state.Commits[0].Body, "\nKeep the fallback.") {
 		t.Fatalf("unexpected commit details: %+v", state.Commits)
 	}
-	history, err := ReadGitHistory(ctx, secondary, state.Branches[2].Ref)
+	history, err := ReadGitHistory(ctx, secondary, state.Branches[2].Ref, "")
 	if err != nil || history.More || len(history.Commits) != 1 || history.Commits[0].Subject != "Release base" {
 		t.Fatalf("unexpected history for remote-tracking branch: %+v (%v)", history, err)
 	}
@@ -78,7 +78,7 @@ func TestInspectGitAndReuseLinkedWorktree(t *testing.T) {
 		t.Fatalf("reading history changed the checkout: %+v", after)
 	}
 	for _, ref := range []string{"--all", "refs/heads/missing", "refs/heads/release-5.27.0~1"} {
-		if _, err := ReadGitHistory(ctx, secondary, ref); err == nil {
+		if _, err := ReadGitHistory(ctx, secondary, ref, ""); err == nil {
 			t.Fatalf("accepted an unavailable or nonliteral branch ref: %q", ref)
 		}
 	}

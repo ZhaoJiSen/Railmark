@@ -1,0 +1,2 @@
+export const projectItemClassName = 'relative min-w-0 flex-nowrap gap-2 px-2.5 py-1.5 text-start hover:bg-accent/50 has-[:active]:bg-accent/70 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-ring motion-reduce:transition-none'
+export const projectItemTriggerClassName = 'max-w-full text-start wrap-anywhere focus-visible:outline-none after:absolute after:inset-0 after:cursor-pointer'

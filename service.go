@@ -33,8 +33,16 @@ func (d *Desk) Workspace(ctx context.Context) (railmark.Workspace, error) {
 	return d.store.Workspace(ctx)
 }
 
+func (d *Desk) SetProjectGrouping(ctx context.Context, enabled bool) error {
+	return d.store.SetProjectGrouping(ctx, enabled)
+}
+
 func (d *Desk) SaveVersion(ctx context.Context, input railmark.Version) (int64, error) {
 	return d.store.SaveVersion(ctx, input)
+}
+
+func (d *Desk) DeleteVersion(ctx context.Context, id int64, name string, requirementCount int) (railmark.Workspace, error) {
+	return d.store.DeleteVersion(ctx, id, name, requirementCount)
 }
 
 func (d *Desk) SelectVersion(ctx context.Context, id int64) error {
@@ -43,6 +51,14 @@ func (d *Desk) SelectVersion(ctx context.Context, id int64) error {
 
 func (d *Desk) SaveRequirement(ctx context.Context, input railmark.SaveRequirementInput) (int64, error) {
 	return d.store.SaveRequirement(ctx, input)
+}
+
+func (d *Desk) UpdateRequirementState(ctx context.Context, id int64, state string) (railmark.Workspace, error) {
+	return d.store.UpdateRequirementState(ctx, id, state)
+}
+
+func (d *Desk) UpdateDeliveryField(ctx context.Context, id, directoryID int64, group, field, value string) (railmark.Workspace, error) {
+	return d.store.UpdateDeliveryField(ctx, id, directoryID, group, field, value)
 }
 
 func (d *Desk) Logs(ctx context.Context, id int64) ([]railmark.LogEntry, error) {
@@ -91,12 +107,12 @@ func (d *Desk) CreateGitBranch(ctx context.Context, directoryID int64, path, nam
 	return d.store.CreateGitBranch(ctx, directoryID, path, name, startRef)
 }
 
-func (d *Desk) GitHistory(ctx context.Context, directoryID int64, ref string) (railmark.GitHistory, error) {
+func (d *Desk) GitHistory(ctx context.Context, directoryID int64, ref, base string) (railmark.GitHistory, error) {
 	dir, err := d.store.Directory(ctx, directoryID)
 	if err != nil {
 		return railmark.GitHistory{}, err
 	}
-	return railmark.ReadGitHistory(ctx, dir, ref)
+	return railmark.ReadGitHistory(ctx, dir, ref, base)
 }
 
 func (d *Desk) GitHistoryPage(ctx context.Context, directoryID int64, head, exclude string, offset int) (railmark.GitHistory, error) {

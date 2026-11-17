@@ -13,6 +13,12 @@ var stateLabels = map[string]string{
 	"done":        "已完成",
 }
 
+var requirementCategoryLabels = map[string]string{
+	"":          "未分类",
+	"business":  "业务需求",
+	"technical": "技术项目",
+}
+
 var groupLabels = map[string]string{
 	"frontend": "前端",
 	"backend":  "后端",
@@ -21,6 +27,10 @@ var groupLabels = map[string]string{
 func URLAllowed(value string) bool {
 	u, err := url.Parse(value)
 	return err == nil && u.Hostname() != "" && (u.Scheme == "https" || u.Scheme == "http") && u.User == nil
+}
+
+func localBranchName(value string) string {
+	return strings.TrimPrefix(strings.TrimSpace(value), "refs/heads/")
 }
 
 func normalizeRequirement(input *SaveRequirementInput) error {
@@ -33,6 +43,9 @@ func normalizeRequirement(input *SaveRequirementInput) error {
 
 	if input.Title == "" {
 		return errors.New("请填写需求标题")
+	}
+	if _, ok := requirementCategoryLabels[input.Category]; !ok {
+		return errors.New("请选择有效的需求类型")
 	}
 	if stateLabels[input.State] == "" {
 		return errors.New("请选择有效的需求状态")
@@ -48,7 +61,7 @@ func normalizeRequirement(input *SaveRequirementInput) error {
 		if groupLabels[link.Group] == "" || stateLabels[link.State] == "" {
 			return errors.New("请选择有效的项目分组和进度")
 		}
-		link.Branch = strings.TrimSpace(link.Branch)
+		link.Branch = localBranchName(link.Branch)
 		link.BaseBranch = strings.TrimSpace(link.BaseBranch)
 		link.PushTarget = strings.TrimSpace(link.PushTarget)
 	}
