@@ -13,11 +13,12 @@ import { useSidebar } from '../ui/sidebar-provider'
 
 import { DeleteVersionDialog } from './delete-version-dialog'
 import { SidebarVersionItem } from './sidebar-version-item'
+import styles from './workspace.module.scss'
 
 interface SidebarProps {
   versions: Version[]
   versionId: number
-  view: View
+  view?: View
   onDashboard: () => void
   onVersion: (id: number) => void
   onNewVersion: () => void
@@ -40,7 +41,7 @@ export function Sidebar({ versions, versionId, view, onDashboard, onVersion, onN
 
   return (
     <>
-      <UISidebar collapsible="icon" aria-label="工作区导航" className="absolute h-full">
+      <UISidebar collapsible="icon" aria-label="工作区导航" className={`${styles.island} absolute h-full`}>
         <SidebarHeader className="shrink-0">
           <SidebarGroup className="p-0">
             <SidebarGroupContent>

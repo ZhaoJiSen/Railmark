@@ -59,12 +59,13 @@ export function CommitList({ directoryId, group, selectedHash, onSelect }: {
 
   return (
     <section aria-label={title}>
-      <h3 className="border-y bg-muted/25 px-2.5 py-1.5 text-xs font-medium wrap-anywhere">{title}</h3>
+      <h3 className="sticky top-0 z-10 truncate border-b bg-surface px-3 py-1.5 text-xs font-medium text-muted-foreground"
+        title={title}>{title}</h3>
       {error && <div className="p-2"><ErrorLine message={error} /></div>}
       {!commits ? (
         !error && <p role="status" className="p-2.5 text-xs text-muted-foreground">正在读取分支提交…</p>
       ) : items.length ? (
-        <ul ref={list} className="divide-y border-b" onKeyDown={event => {
+        <ul ref={list} className="divide-y divide-border/70 px-1.5" onKeyDown={event => {
           if (event.altKey || event.ctrlKey || event.metaKey || event.nativeEvent.isComposing) return
           if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
           const buttons = [...event.currentTarget.querySelectorAll('button')]
@@ -78,9 +79,9 @@ export function CommitList({ directoryId, group, selectedHash, onSelect }: {
           {items.map(commit => {
             const selected = selectedHash === commit.fullHash
             return (
-              <li key={commit.fullHash} className="px-1">
-                <Button type="button" variant={selected ? 'secondary' : 'ghost'} size="sm" title={commit.subject}
-                  className="h-auto min-h-9 w-full justify-start px-1.5 py-1.5 text-start"
+              <li key={commit.fullHash} className="py-0.5">
+                <Button type="button" variant={selected ? 'secondary' : 'ghost'} size="sm"
+                  className="h-auto min-h-10 w-full justify-start px-2 py-1 text-start text-[0.8125rem] leading-4"
                   tabIndex={tabHash === commit.fullHash ? 0 : -1} onFocus={() => setActiveHash(commit.fullHash)}
                   aria-pressed={selected} onClick={event => onSelect(commit, event.currentTarget, event.detail === 0)}>
                   <span className="min-w-0 flex-1">

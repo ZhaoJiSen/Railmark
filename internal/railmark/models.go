@@ -32,19 +32,20 @@ type DirectoryPreview struct {
 }
 
 type Requirement struct {
-	ID         int64      `json:"id"`
-	VersionID  int64      `json:"versionId"`
-	Title      string     `json:"title"`
-	Category   string     `json:"category"`
-	Direction  string     `json:"direction"`
-	State      string     `json:"state"`
-	Background string     `json:"background"`
-	Scope      string     `json:"scope"`
-	Acceptance string     `json:"acceptance"`
-	SourceURL  string     `json:"sourceUrl"`
-	UpdatedAt  string     `json:"updatedAt"`
-	LatestLog  string     `json:"latestLog"`
-	Projects   []Delivery `json:"projects"`
+	ID             int64      `json:"id"`
+	VersionID      int64      `json:"versionId"`
+	Title          string     `json:"title"`
+	Category       string     `json:"category"`
+	Direction      string     `json:"direction"`
+	State          string     `json:"state"`
+	Background     string     `json:"background"`
+	Implementation string     `json:"implementation"`
+	Scope          string     `json:"scope"`
+	Acceptance     string     `json:"acceptance"`
+	SourceURL      string     `json:"sourceUrl"`
+	UpdatedAt      string     `json:"updatedAt"`
+	LatestLog      string     `json:"latestLog"`
+	Projects       []Delivery `json:"projects"`
 }
 
 type Delivery struct {
@@ -61,17 +62,18 @@ type Delivery struct {
 }
 
 type SaveRequirementInput struct {
-	ID         int64         `json:"id"`
-	VersionID  int64         `json:"versionId"`
-	Title      string        `json:"title"`
-	Category   string        `json:"category"`
-	Direction  string        `json:"direction"`
-	State      string        `json:"state"`
-	Background string        `json:"background"`
-	Scope      string        `json:"scope"`
-	Acceptance string        `json:"acceptance"`
-	SourceURL  string        `json:"sourceUrl"`
-	Projects   []ProjectLink `json:"projects"`
+	ID             int64         `json:"id"`
+	VersionID      int64         `json:"versionId"`
+	Title          string        `json:"title"`
+	Category       string        `json:"category"`
+	Direction      string        `json:"direction"`
+	State          string        `json:"state"`
+	Background     string        `json:"background"`
+	Implementation string        `json:"implementation"`
+	Scope          string        `json:"scope"`
+	Acceptance     string        `json:"acceptance"`
+	SourceURL      string        `json:"sourceUrl"`
+	Projects       []ProjectLink `json:"projects"`
 }
 
 type ProjectLink struct {

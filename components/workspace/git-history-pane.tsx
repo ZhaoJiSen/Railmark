@@ -9,11 +9,12 @@ import { CommitList, type GitCommitGroup } from './git-commits'
 import { GitScrollArea } from './git-scroll-area'
 
 export function GitHistoryPane({
-  directoryId, groups, branchLabel, children, history, historyLayout, onHistoryLayoutChange, filesLayout, onFilesLayoutChange,
+  directoryId, groups, branchLabel, header, children, history, historyLayout, onHistoryLayoutChange, filesLayout, onFilesLayoutChange,
 }: {
   directoryId: number
   groups: GitCommitGroup[]
   branchLabel: string
+  header: ReactNode
   children: ReactNode
   history: RefObject<HTMLDivElement | null>
   historyLayout?: Layout
@@ -56,8 +57,10 @@ export function GitHistoryPane({
           'touch-auto!',
           selected && '@max-[44rem]/git-history:[&>#git-commit-list]:hidden!',
         )}>
-        <ResizablePanel id="git-commit-list" defaultSize="26%" minSize="10rem" style={{ overflow: 'hidden' }}>
-          <GitScrollArea viewportProps={{ ref: history, tabIndex: -1 }} className="h-full">
+        <ResizablePanel id="git-commit-list" defaultSize="33%" minSize="10rem"
+          className="flex min-h-0 min-w-0 flex-col" style={{ overflow: 'hidden' }}>
+          {header}
+          <GitScrollArea viewportProps={{ ref: history, tabIndex: -1, className: '[scrollbar-width:none]!' }} className="flex-1">
             {children}
             {groups.map((group, groupIndex) => (
               <CommitList key={`${groupIndex}:${group.head ?? ""}:${group.exclude ?? ""}`} directoryId={directoryId} group={group} selectedHash={selection?.group === groupIndex ? selected?.fullHash : undefined}
@@ -72,9 +75,9 @@ export function GitHistoryPane({
         {selected && (
           <>
             <GitColumnHandle label="调整提交列表与提交详情宽度" className="@max-[44rem]/git-history:hidden" />
-            <ResizablePanel id="git-commit-detail" minSize="32rem" className="touch-auto!" style={{ overflow: 'hidden' }}>
+            <ResizablePanel id="git-commit-detail" minSize="28rem" className="touch-auto!" style={{ overflow: 'hidden' }}>
               <div ref={details} tabIndex={-1} role="region" aria-label="选中提交的详情"
-                className="h-full min-h-0 min-w-0 bg-background outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring">
+                className="h-full min-h-0 min-w-0 bg-(--background-secondary) outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring">
                 <GitCommitDetails key={selected.fullHash} directoryId={directoryId} commit={selected} branchLabel={branchLabel} onClose={() => select(undefined)}
                   filesLayout={filesLayout} onFilesLayoutChange={onFilesLayoutChange} />
               </div>

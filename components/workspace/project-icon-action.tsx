@@ -11,7 +11,7 @@ export function ProjectIconAction({ label, tooltipSide, size = 'icon-sm', ...pro
       <TooltipTrigger asChild>
         <Button type="button" size={size} variant="ghost" aria-label={label} {...props} />
       </TooltipTrigger>
-      <TooltipContent side={tooltipSide} sideOffset={5} className="max-w-80 wrap-anywhere data-[state=closed]:animate-none! motion-reduce:animate-none!">
+      <TooltipContent side={tooltipSide} sideOffset={5} className="max-w-80 wrap-anywhere">
         {label}
       </TooltipContent>
     </Tooltip>

@@ -4,19 +4,18 @@ import { Desk } from '../../lib/mygo'
 import { readableError } from '../../lib/utils'
 import { localBranchName } from '../../lib/workspace-data'
 import { Button } from '../ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog'
 import { ErrorLine } from '../ui/form-parts'
 import { Spinner } from '../ui/spinner'
 import { BranchChooser } from './branch-chooser'
 import { BranchNameField } from './branch-name-field'
 import type { LinkDraft } from './link-draft'
 
-export function BranchDialog({ link, mode, onSelect, onClose, returnFocus }: {
+export function BranchDialog({ link, mode, onSelect, onClose }: {
   link: LinkDraft
   mode: 'select' | 'create'
   onSelect: (name: string) => void
   onClose: () => void
-  returnFocus: HTMLElement | null
 }) {
   const id = useId()
   const { directoryId, path, baseBranch } = link
@@ -42,6 +41,8 @@ export function BranchDialog({ link, mode, onSelect, onClose, returnFocus }: {
   }, [directoryId, path, baseBranch])
 
   const start = branches?.find(branch => branch.ref === startRef)
+  const projectContext = path.replace(/\/+$/, '').endsWith(`/${link.projectName}`)
+    ? path : [link.projectName, path].filter(Boolean).join(' · ')
 
   async function create(): Promise<void> {
     const branchName = name.trim()
@@ -63,19 +64,12 @@ export function BranchDialog({ link, mode, onSelect, onClose, returnFocus }: {
 
   return (
     <Dialog open onOpenChange={open => { if (!open && !pending.current) onClose() }}>
-      <DialogContent className="flex max-h-[calc(100dvh-3rem)] min-w-0 flex-col gap-3 overflow-hidden p-4 sm:max-w-lg"
-        showCloseButton={!busy}
-        onCloseAutoFocus={event => {
-          if (returnFocus?.isConnected) {
-            event.preventDefault()
-            returnFocus.focus()
-          }
-        }}>
-        <DialogHeader className="min-w-0 gap-1 pe-8 text-left">
+      <DialogContent size="lg" scroll="inside" showCloseButton={!busy}>
+        <DialogHeader className="min-w-0 shrink-0 pe-8">
           <DialogTitle>{creating ? '新建本地分支' : '选择已有开发分支'}</DialogTitle>
-          <DialogDescription className="wrap-anywhere" title={path}>{link.projectName} · {path}</DialogDescription>
+          <DialogDescription className="line-clamp-2 wrap-anywhere" title={projectContext}>{projectContext}</DialogDescription>
         </DialogHeader>
-        <div className="min-h-0 min-w-0 space-y-3 overflow-y-auto p-1">
+        <DialogBody className="min-w-0 space-y-3">
           {creating && (
             <BranchNameField id={id} label="新分支名称" value={name} onChange={setName} disabled={busy}
               placeholder="输入项目约定的分支名" />
@@ -101,17 +95,17 @@ export function BranchDialog({ link, mode, onSelect, onClose, returnFocus }: {
           )}
           {!branches && !error && <p role="status" className="text-xs text-muted-foreground">正在读取分支…</p>}
           <ErrorLine message={error} />
-        </div>
-        {creating && <p className="text-xs text-muted-foreground">立即创建本地分支。保存后才会关联到需求。</p>}
-        <DialogFooter className="flex-row flex-wrap justify-end">
-          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{creating ? '取消' : '关闭'}</Button>
-          {creating && (
+          {creating && <p className="text-xs text-muted-foreground">立即创建本地分支。保存后才会关联到需求。</p>}
+        </DialogBody>
+        {creating && (
+          <DialogFooter className="shrink-0 flex-wrap">
+            <Button type="button" variant="outline" onClick={onClose} disabled={busy}>取消</Button>
             <Button type="button" onClick={() => void create()} disabled={!name.trim() || !start || busy}>
-              {busy && <Spinner aria-hidden="true" className="size-3.5" />}
+              {busy && <Spinner aria-hidden="true" />}
               {busy ? '创建中…' : '创建并填入'}
             </Button>
-          )}
-        </DialogFooter>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )

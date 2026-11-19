@@ -1,6 +1,6 @@
 .patch {
   --diff-font-family: var(--font-mono);
-  --diff-background-color: var(--background);
+  --diff-background-color: var(--background-secondary);
   --diff-text-color: var(--foreground);
   --diff-code-insert-background-color: light-dark(#e7f5eb, #142a20);
   --diff-code-delete-background-color: light-dark(#fae9e8, #351d20);

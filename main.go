@@ -4,16 +4,30 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/egoist/mygo"
 
+	"railmark/internal/automation"
 	"railmark/internal/railmark"
 )
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "--railmark-automation-files" {
+		if err := automation.ServeFiles(os.Args[2], os.Stdin, os.Stdout); err != nil {
+			os.Exit(1)
+		}
+		return
+	}
 	service := &Desk{}
-	mygo.Bind(service)
+	generate := os.Getenv("MYGO_GENERATE")
+	if generate == "" || filepath.Base(generate) != "mygo-automation.ts" {
+		mygo.Bind(service)
+	}
+	if generate == "" || filepath.Base(generate) == "mygo-automation.ts" {
+		mygo.Bind(&Automation{desk: service})
+	}
 	mygo.App.WhenReady(func() {
 		data, err := mygo.App.Path(mygo.PathUserData)
 		if err == nil {

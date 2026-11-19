@@ -33,7 +33,8 @@ export function useListReturn(location: string) {
     const saved = pending?.location === location ? pending.position : undefined
 
     viewport.current?.scrollTo({ top: saved?.top ?? versionPositions.current.get(location) ?? 0 })
-    const trigger = saved?.triggerId ? document.getElementById(saved.triggerId) : null
+    const anchor = saved?.triggerId ? document.getElementById(saved.triggerId) : null
+    const trigger = anchor?.closest<HTMLElement>('[role="option"]') ?? anchor
     const fallback = saved ? '[data-detail-heading], h1[tabindex="-1"]' : '[data-detail-heading]'
     const headings = Array.from(viewport.current?.querySelectorAll<HTMLElement>(fallback) ?? [])
     const target = trigger?.getClientRects().length ? trigger : headings.find(heading => heading.getClientRects().length)

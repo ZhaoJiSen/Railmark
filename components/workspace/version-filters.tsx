@@ -32,10 +32,10 @@ export function VersionFilters({
 
   return (
     <div className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-2 sm:basis-125 sm:justify-end">
-      <InputGroup className="min-w-36 flex-1 basis-full sm:max-w-66 sm:basis-0">
-        <InputGroupInput ref={search} aria-label="搜索当前版本需求" placeholder="搜索需求、项目或分支"
+      <InputGroup variant="secondary" className="min-w-36 flex-1 basis-full sm:max-w-66 sm:basis-0">
+        <InputGroupInput ref={search} aria-label="搜索当前版本需求" className="min-w-0" placeholder="搜索需求、项目或分支"
           value={query} onChange={event => onQuery(event.target.value)} />
-        <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
+        <InputGroupAddon><Search aria-hidden="true" className="size-4" /></InputGroupAddon>
       </InputGroup>
       <OptionSelect label="按项目筛选" className="max-w-36" value={String(projectId)}
         onChange={value => onProject(Number(value))}

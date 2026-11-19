@@ -1,11 +1,14 @@
 'use client'
 
-import { FileText, FolderGit2 } from 'lucide-react'
+import { Autocomplete } from '@heroui/react/autocomplete'
+import { Header } from '@heroui/react/header'
+import { Label } from '@heroui/react/label'
+import { ListBox } from '@heroui/react/list-box'
 import { useState } from 'react'
 import type { Requirement, Workspace } from '../../lib/mygo'
 import { matchesQuery, requirementMatches } from '../../lib/workspace-data'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog'
+import { PickerSearchField } from '../ui/picker-search-field'
 
 export function SearchDialog({ data, onClose, onRequirement, onProject }: {
   data: Workspace
@@ -20,39 +23,42 @@ export function SearchDialog({ data, onClose, onRequirement, onProject }: {
 
   return (
     <Dialog open onOpenChange={open => { if (!open) onClose() }}>
-      <DialogContent className="gap-0 p-0 sm:max-w-xl" showCloseButton={false}>
+      <DialogContent size="lg" scroll="inside" showCloseButton={false}>
         <DialogHeader className="sr-only">
           <DialogTitle>搜索工作区</DialogTitle>
           <DialogDescription>跨版本查找需求和项目</DialogDescription>
         </DialogHeader>
-        <Command shouldFilter={false} label="搜索工作区">
-          <CommandInput aria-label="搜索全部版本和项目" placeholder="输入需求、项目或分支"
-            className="h-11" value={query} onValueChange={setQuery} />
-          <CommandList className="max-h-[55dvh]">
-            <CommandEmpty>暂无匹配结果</CommandEmpty>
-            {requirements.length > 0 && (
-              <CommandGroup heading={query ? '需求' : '最近更新的需求'}>
-                {requirements.map(req => (
-                  <CommandItem key={req.id} value={`req-${req.id}`} className="py-2.5"
-                    onSelect={() => { onClose(); onRequirement(req) }}>
-                    <FileText /><span className="min-w-0 flex-1 truncate">{req.title}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{versionNames.get(req.versionId)}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-            {projects.length > 0 && (
-              <CommandGroup heading="项目">
-                {projects.map(project => (
-                  <CommandItem key={project.id} value={`project-${project.id}`} className="py-2.5"
-                    onSelect={() => { onClose(); onProject(project.id) }}>
-                    <FolderGit2 /><span className="min-w-0 truncate">{project.name}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
+        <DialogBody className="grid grid-cols-1 gap-3">
+          <Autocomplete.Filter inputValue={query} onInputChange={setQuery}>
+            <PickerSearchField label="搜索全部版本和项目" placeholder="输入需求、项目或分支" autoFocus />
+            <ListBox aria-label="搜索工作区" className="max-h-[55dvh] overflow-y-auto scrollbar"
+              renderEmptyState={() => '暂无匹配结果'}>
+              {requirements.length > 0 && (
+                <ListBox.Section>
+                  <Header>{query ? '需求' : '最近更新的需求'}</Header>
+                  {requirements.map(req => (
+                    <ListBox.Item key={req.id} id={`req-${req.id}`} textValue={req.title}
+                      onAction={() => { onClose(); onRequirement(req) }}>
+                      <Label className="min-w-0 flex-1 wrap-anywhere">{req.title}</Label>
+                      <span className="shrink-0 font-mono text-xs text-muted">{versionNames.get(req.versionId)}</span>
+                    </ListBox.Item>
+                  ))}
+                </ListBox.Section>
+              )}
+              {projects.length > 0 && (
+                <ListBox.Section>
+                  <Header>项目</Header>
+                  {projects.map(project => (
+                    <ListBox.Item key={project.id} id={`project-${project.id}`} textValue={project.name}
+                      onAction={() => { onClose(); onProject(project.id) }}>
+                      <Label className="min-w-0 wrap-anywhere">{project.name}</Label>
+                    </ListBox.Item>
+                  ))}
+                </ListBox.Section>
+              )}
+            </ListBox>
+          </Autocomplete.Filter>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

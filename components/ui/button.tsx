@@ -1,63 +1,35 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "../../lib/utils"
-import { Slot } from "radix-ui"
+'use client'
 
-const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
-        outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-7 px-3 has-[>svg]:px-2.5",
-        xs: "h-5.5 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-6.5 rounded-md px-2.5 has-[>svg]:px-2",
-        lg: "h-8 rounded-md px-4 has-[>svg]:px-3",
-        icon: "size-7",
-        "icon-xs": "size-5.5 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-6.5",
-        "icon-lg": "size-8",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
+import { Button as HeroButton, buttonVariants as heroButtonVariants } from '@heroui/react/button'
+import { Tooltip } from '@heroui/react/tooltip'
+import { Children, cloneElement, isValidElement } from 'react'
+import type { ComponentProps, ReactElement } from 'react'
 
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
-  const Comp = asChild ? Slot.Root : "button"
+const variants = { default: 'primary', destructive: 'danger', outline: 'outline', secondary: 'secondary', ghost: 'ghost', link: 'ghost' } as const
+const sizes = { default: 'sm', xs: 'sm', sm: 'sm', lg: 'lg', icon: 'sm', 'icon-xs': 'sm', 'icon-sm': 'sm', 'icon-lg': 'lg' } as const
 
-  return (
-    <Comp
-      data-slot="button"
-      data-variant={variant}
-      data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  )
+type ButtonProps = Omit<ComponentProps<'button'>, 'value'> & {
+  variant?: keyof typeof variants
+  size?: keyof typeof sizes
+  asChild?: boolean
 }
 
-export { Button, buttonVariants }
+export function buttonVariants({ variant = 'default', size = 'default', className }: {
+  variant?: keyof typeof variants, size?: keyof typeof sizes, className?: string,
+} = {}) {
+  return heroButtonVariants({ variant: variants[variant], size: sizes[size], isIconOnly: size.startsWith('icon'), className })
+}
+
+// Preserve the app's event and sizing API while HeroUI owns visual states and dimensions.
+export function Button({ variant = 'default', size = 'default', asChild, children, disabled, title, tabIndex, ...props }: ButtonProps) {
+  if (asChild) {
+    const child = Children.only(children)
+    if (!isValidElement(child)) return null
+    const element = child as ReactElement<ComponentProps<'a'>>
+    return cloneElement(element, { ...props, ...element.props, className: buttonVariants({ variant, size, className: props.className }) } as ComponentProps<'a'>)
+  }
+  const button = <HeroButton {...(props as ComponentProps<typeof HeroButton>)}
+    aria-label={props['aria-label'] ?? title} excludeFromTabOrder={tabIndex === -1} size={sizes[size]} variant={variants[variant]} isIconOnly={size.startsWith('icon')}
+    isDisabled={disabled}>{children}</HeroButton>
+  return title ? <Tooltip delay={400}>{button}<Tooltip.Content>{title}</Tooltip.Content></Tooltip> : button
+}

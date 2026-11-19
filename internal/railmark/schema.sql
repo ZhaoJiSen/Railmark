@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS requirements (
     direction TEXT NOT NULL DEFAULT '',
     state TEXT NOT NULL CHECK (state IN ('todo', 'in_progress', 'testing', 'done')),
     background TEXT NOT NULL DEFAULT '',
+    implementation TEXT NOT NULL DEFAULT '',
     scope TEXT NOT NULL DEFAULT '',
     acceptance TEXT NOT NULL DEFAULT '',
     source_url TEXT NOT NULL DEFAULT '',

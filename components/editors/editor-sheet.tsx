@@ -1,32 +1,39 @@
-import { ArrowDown } from 'lucide-react'
+import { Tooltip } from '@heroui/react/tooltip'
+import { ArrowDown, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
 import { FieldSet } from '../ui/field'
 import { ErrorLine } from '../ui/form-parts'
-import { Kbd } from '../ui/kbd'
 import { Spinner } from '../ui/spinner'
 import { ScrollArea } from '../ui/scroll-area'
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '../ui/sheet'
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '../ui/sheet'
 
 import { DiscardChangesDialog } from './discard-changes-dialog'
 import { useEditorScroll } from './use-editor-scroll'
 
-const toolbarInset = 'top-[max(3rem,var(--mygo-titlebar-height,0px))]'
 
 type SubmitEditor = (event: FormEvent<HTMLFormElement>) => Promise<(() => void) | undefined>
 
-export function EditorSheet({ title, description, submitLabel, busy, dirty, error, wide, children, onClose, onSubmit }: {
+export function EditorSheet({ title, description, headerAction, submitLabel, cancelLabel = '取消', busy,
+  submitDisabled, footerActions, dirty, error, wide, initialFocus, children, onBack, onClose, onInterrupt, onSubmit }: {
   title: string
   description?: string
+  headerAction?: ReactNode
   submitLabel: string
+  cancelLabel?: string
   busy: boolean
+  submitDisabled?: boolean
+  footerActions?: ReactNode
   dirty: boolean
   error: string
   wide?: boolean
+  initialFocus?: string
   children: ReactNode
+  onBack?: () => void
   onClose: () => void
+  onInterrupt?: () => void
   onSubmit: SubmitEditor
 }) {
   const [open, setOpen] = useState(true)
@@ -34,6 +41,8 @@ export function EditorSheet({ title, description, submitLabel, busy, dirty, erro
   const { setViewport, more } = useEditorScroll()
   const opener = useRef<HTMLElement>(null)
   const afterClose = useRef<(() => void) | null>(null)
+  const canDismiss = !busy && !onInterrupt
+  const canSubmit = open && !busy && !submitDisabled
 
   function cancel(): void {
     if (dirty) setConfirming(true)
@@ -46,15 +55,23 @@ export function EditorSheet({ title, description, submitLabel, busy, dirty, erro
   }
 
   return (
-    <Sheet open={open} onOpenChange={next => { if (!next && !busy && open && !confirming) cancel() }}>
-      <SheetContent side="right" showCloseButton={!busy} onInteractOutside={event => event.preventDefault()}
+    <Sheet open={open} onOpenChange={next => { if (!next && canDismiss && open && !confirming) cancel() }}>
+      <SheetContent side="right" showCloseButton={canDismiss && !headerAction} onInteractOutside={event => event.preventDefault()}
         onEscapeKeyDown={event => {
-          if (event.isComposing || (event.target instanceof Element && event.target.closest('[data-editor-picker]'))) {
+          if (!canDismiss || event.isComposing || (event.target instanceof Element && event.target.closest('[data-editor-picker]'))) {
             event.preventDefault()
+          } else if (onBack) {
+            event.preventDefault()
+            onBack()
           }
         }}
-        onOpenAutoFocus={() => {
+        onOpenAutoFocus={event => {
           if (document.activeElement instanceof HTMLElement) opener.current = document.activeElement
+          const focus = initialFocus && document.getElementById(initialFocus)
+          if (focus) {
+            event.preventDefault()
+            focus.focus()
+          }
         }}
         onCloseAutoFocus={event => {
           event.preventDefault()
@@ -64,27 +81,34 @@ export function EditorSheet({ title, description, submitLabel, busy, dirty, erro
           action?.()
         }}
         {...(!description && { 'aria-describedby': undefined })}
-        overlayClassName={cn(toolbarInset, 'bg-black/20 data-[state=closed]:duration-120 data-[state=open]:duration-180 motion-reduce:animate-none! dark:bg-black/40')}
-        className={cn(
-          toolbarInset, 'bottom-0 h-auto w-full gap-0 overflow-hidden p-0 motion-reduce:animate-none!',
-          'data-[state=open]:duration-220 data-[state=open]:ease-out',
-          'data-[state=closed]:pointer-events-none data-[state=closed]:duration-140 data-[state=closed]:ease-in',
-          wide ? 'max-w-[34rem] sm:max-w-[34rem]' : 'max-w-md sm:max-w-md',
-        )}>
-        <SheetHeader className="shrink-0 gap-1 border-b px-4 py-3 pe-11">
-          <SheetTitle className="text-base">{title}</SheetTitle>
+        className={cn('w-full overflow-hidden', wide ? 'max-w-[38rem]' : 'max-w-lg')}>
+        <SheetHeader className="shrink-0">
+          {headerAction ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <SheetTitle className="min-w-0 flex-1 wrap-anywhere">{title}</SheetTitle>
+              {headerAction}
+              {canDismiss && (
+                <SheetClose asChild>
+                  <Button type="button" variant="ghost" size="icon-sm" aria-label="关闭">
+                    <X aria-hidden="true" />
+                  </Button>
+                </SheetClose>
+              )}
+            </div>
+          ) : <SheetTitle>{title}</SheetTitle>}
           {description && <SheetDescription className="wrap-anywhere text-xs">{description}</SheetDescription>}
         </SheetHeader>
         <form className="flex min-h-0 flex-1 flex-col"
+          aria-keyshortcuts={canSubmit ? 'Meta+Enter Control+Enter' : undefined}
           onKeyDown={event => {
-            if (!open || busy || event.defaultPrevented || event.nativeEvent.isComposing
+            if (!canSubmit || event.defaultPrevented || event.nativeEvent.isComposing
               || event.repeat || !(event.metaKey || event.ctrlKey) || event.key !== 'Enter'
               || !(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return
             event.preventDefault()
             event.currentTarget.requestSubmit()
           }}
           onSubmit={async event => {
-            if (!open) {
+            if (!open || submitDisabled) {
               event.preventDefault()
               return
             }
@@ -94,23 +118,27 @@ export function EditorSheet({ title, description, submitLabel, busy, dirty, erro
           <ScrollArea type="hover" scrollbarSize="thin"
             viewportProps={{ ref: setViewport, className: 'h-auto min-w-0 [&>div]:block!' }}
             className="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] overflow-hidden">
-            <FieldSet disabled={busy} className="@container w-full min-w-0 gap-3 px-4 py-3">
+            <FieldSet disabled={busy} className="@container w-full min-w-0 gap-4 px-6 py-4">
               {children}
             </FieldSet>
           </ScrollArea>
-          {error && <div className="shrink-0 px-4 pb-2.5"><ErrorLine message={error} /></div>}
-          <SheetFooter className="shrink-0 flex-row flex-wrap items-center justify-end border-t bg-muted/40 px-4 py-2.5">
+          {error && !footerActions && <div className="shrink-0 px-4 pb-2.5"><ErrorLine message={error} /></div>}
+          <SheetFooter className="shrink-0 flex-row flex-wrap items-center justify-end">
             {more && (
               <span aria-hidden="true" className="me-auto flex items-center gap-1 text-xs text-muted-foreground">
-                <ArrowDown className="size-3" />下方还有字段
+                <ArrowDown className="size-3" />{footerActions ? '下方还有内容' : '下方还有字段'}
               </span>
             )}
-            <Button variant="outline" type="button" onClick={cancel} disabled={busy || !open}>取消</Button>
-            <Button type="submit" className="active:bg-primary/80" disabled={busy || !open} aria-keyshortcuts="Meta+Enter Control+Enter">
-              {busy && <Spinner aria-hidden="true" className="size-3.5" />}
-              {busy ? '正在保存…' : submitLabel}
-              {!busy && <Kbd aria-hidden="true" className="bg-primary-foreground/15 text-current">⌘↵</Kbd>}
-            </Button>
+            {footerActions ?? <>
+              <Button variant="ghost" type="button" onClick={onInterrupt ?? cancel} disabled={busy || !open}>{cancelLabel}</Button>
+              <Tooltip delay={400} isDisabled={!canSubmit}>
+                <Button type="submit" disabled={!canSubmit}>
+                  {busy && <Spinner aria-hidden="true" />}
+                  {busy ? '正在保存…' : submitLabel}
+                </Button>
+                <Tooltip.Content>快捷提交（⌘ + Enter 或 Ctrl + Enter）</Tooltip.Content>
+              </Tooltip>
+            </>}
           </SheetFooter>
         </form>
         {confirming && <DiscardChangesDialog onKeep={() => setConfirming(false)} onDiscard={() => {

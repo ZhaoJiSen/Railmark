@@ -1,10 +1,7 @@
-import { Layers3 } from 'lucide-react'
+import { Table } from '@heroui/react/table'
 import type { Requirement, Version } from '../../lib/mygo'
-import { Button } from '../ui/button'
 import { Card, CardHeader, CardTitle } from '../ui/card'
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../ui/empty'
 import { Progress } from '../ui/progress'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { VersionStatus } from './status'
 
 export function DashboardVersions({ versions, requirements, onVersion }: {
@@ -14,60 +11,48 @@ export function DashboardVersions({ versions, requirements, onVersion }: {
 }) {
   const byVersion = Map.groupBy(requirements, item => item.versionId)
   return (
-    <Card aria-labelledby="dashboard-versions" className="@container/version-progress min-w-0 gap-0 py-0">
-      <CardHeader className="flex min-h-11 items-center px-3 py-1.5">
+    <Card variant="transparent" aria-labelledby="dashboard-versions" className="min-w-0 px-0">
+      <CardHeader className="min-h-8 justify-center">
         <CardTitle id="dashboard-versions" role="heading" aria-level={2}>版本进度</CardTitle>
       </CardHeader>
-      <Table aria-label="版本进度" className="table-fixed border-t">
-        <TableHeader className="bg-muted/20 [&_th]:h-8 [&_th]:text-xs [&_th]:text-muted-foreground">
-          <TableRow>
-            <TableHead className="w-[55%] ps-4 @min-[25rem]/version-progress:w-[44%]">版本</TableHead>
-            <TableHead>需求进度</TableHead>
-            <TableHead className="hidden w-27 pe-3 @min-[25rem]/version-progress:table-cell">发布日期</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {versions.map(version => {
-            const items = byVersion.get(version.id) ?? []
-            const done = items.filter(item => item.state === 'done').length
-            return (
-              <TableRow key={version.id}>
-                <TableCell className="py-1 ps-3 whitespace-normal">
-                  <Button type="button" variant="ghost" size="sm" title={version.name}
-                    className="h-auto min-h-7 max-w-full flex-wrap justify-start gap-x-2 gap-y-0.5 px-1 py-0.5" onClick={() => onVersion(version.id)}>
-                    <span className="min-w-0 truncate font-mono">{version.name}</span>
-                    <VersionStatus state={version.state} />
-                  </Button>
-                  {version.releaseDate && <p className="ms-1 text-xs text-muted-foreground @min-[25rem]/version-progress:hidden">{version.releaseDate}</p>}
-                </TableCell>
-                <TableCell className="text-xs whitespace-normal text-muted-foreground tabular-nums">
-                  {items.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span><span className="font-medium text-foreground">{done}</span> / {items.length} 已完成</span>
-                      <Progress aria-label={`${version.name} 需求完成进度`} className="w-12" value={done * 100 / items.length} />
-                    </div>
-                  ) : '暂无需求'}
-                </TableCell>
-                <TableCell className="hidden pe-3 text-xs text-muted-foreground tabular-nums @min-[25rem]/version-progress:table-cell">
-                  {version.releaseDate || '未安排'}
-                </TableCell>
-              </TableRow>
-            )
-          })}
-          {!versions.length && (
-            <TableRow className="hover:bg-transparent">
-              <TableCell colSpan={3} className="p-0 whitespace-normal">
-                <Empty className="flex-row justify-start gap-2.5 px-3 py-3 text-start md:p-3">
-                  <EmptyMedia variant="icon" className="mb-0"><Layers3 /></EmptyMedia>
-                  <EmptyHeader className="min-w-0 items-start gap-1 text-start">
-                    <EmptyTitle>暂无版本</EmptyTitle>
-                    <EmptyDescription>新建版本后，即可添加需求和关联本地项目。</EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
+      <Table>
+        <Table.ScrollContainer>
+          <Table.Content aria-label="版本进度" className="min-w-96 table-fixed">
+            <Table.Header>
+              <Table.Column isRowHeader>版本</Table.Column>
+              <Table.Column className="w-24">状态</Table.Column>
+              <Table.Column className="w-[27%]">需求进度</Table.Column>
+              <Table.Column className="w-28">发布日期</Table.Column>
+            </Table.Header>
+            <Table.Body renderEmptyState={() => '新建版本后，即可添加需求和关联本地项目。'}>
+              {versions.map(version => {
+                const items = byVersion.get(version.id) ?? []
+                const total = items.length
+                const done = items.filter(item => item.state === 'done').length
+                return (
+                  <Table.Row id={version.id} key={version.id} textValue={version.name}
+                    className="cursor-pointer" onAction={() => onVersion(version.id)}>
+                    <Table.Cell>
+                      <span className="font-medium wrap-anywhere">{version.name}</span>
+                    </Table.Cell>
+                    <Table.Cell><VersionStatus state={version.state} /></Table.Cell>
+                    <Table.Cell className="text-xs text-muted">
+                      {total > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <span aria-hidden="true" className="whitespace-nowrap tabular-nums">{done} / {total}</span>
+                          <Progress size="sm" className="min-w-0 max-w-16 flex-1 gap-0"
+                            aria-label={`${version.name} 需求完成进度`} valueLabel={`${done} / ${total} 已完成`}
+                            value={done} maxValue={total} />
+                        </div>
+                      ) : '暂无需求'}
+                    </Table.Cell>
+                    <Table.Cell>{version.releaseDate || '未安排'}</Table.Cell>
+                  </Table.Row>
+                )
+              })}
+            </Table.Body>
+          </Table.Content>
+        </Table.ScrollContainer>
       </Table>
     </Card>
   )

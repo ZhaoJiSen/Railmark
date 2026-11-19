@@ -7,6 +7,7 @@ import { RequirementContentFields } from '../editors/requirement-extra-fields'
 import { RequirementFields } from '../editors/requirement-fields'
 import type { useRequirementDraft } from '../editors/use-requirement-draft'
 import { Button } from '../ui/button'
+import { FieldSet } from '../ui/field'
 import { ErrorLine } from '../ui/form-parts'
 import { Spinner } from '../ui/spinner'
 
@@ -38,18 +39,18 @@ export function RequirementInlineForm({ target, editor, projects, requirements, 
     event.preventDefault()
     if (!dirty || busy) return
     const id = await save(input => {
-      const { title, category, versionId, state, direction, background, scope, acceptance, sourceUrl } = input
+      const { title, category, versionId, state, direction, background, implementation, scope, acceptance, sourceUrl } = input
       if (target === 'request-title') {
         return commit(input.id, { title, category, versionId, direction, ...(state !== initialState && { state }) })
       }
-      if (target === 'request-background') return commit(input.id, { background, scope, acceptance, sourceUrl })
+      if (target === 'request-background') return commit(input.id, { background, implementation, scope, acceptance, sourceUrl })
       return commit(input.id, { projects: input.projects })
     })
     if (id) onSaved()
   }
 
   return (
-    <form aria-label={editLabels[target]} className="@container space-y-2.5 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
+    <form aria-label={editLabels[target]} className="@container space-y-4 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
       onSubmit={submit}
       onKeyDown={event => {
         if (busy || event.defaultPrevented || event.nativeEvent.isComposing || event.repeat || event.key !== 'Enter'
@@ -57,13 +58,13 @@ export function RequirementInlineForm({ target, editor, projects, requirements, 
         event.preventDefault()
         event.currentTarget.requestSubmit()
       }}>
-      <fieldset disabled={busy} className="min-w-0">
+      <FieldSet disabled={busy} className="min-w-0">
         {target === 'request-title' && <RequirementFields draft={draft} versions={versions} requirements={requirements} onChange={update} />}
         {target === 'request-background' && <RequirementContentFields draft={draft} onChange={update} />}
         {target === 'request-projects' && (
           <ProjectFieldset projects={projects} requirements={requirements} links={links} onChange={setProjects} error={error} />
         )}
-      </fieldset>
+      </FieldSet>
       <ErrorLine message={error} />
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={busy}>取消</Button>

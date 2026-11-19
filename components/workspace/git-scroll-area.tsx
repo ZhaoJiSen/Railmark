@@ -6,13 +6,14 @@ export function GitScrollArea({ className, viewportProps, ...props }: ComponentP
   return (
     <ScrollArea
       {...props}
-      type="hover"
-      scrollHideDelay={0}
-      scrollbarSize="thin"
+      data-scrollbar="thin"
       className={cn('min-h-0 min-w-0', className)}
       viewportProps={{
         ...viewportProps,
-        className: cn('[&>div]:block!', viewportProps?.className),
+        className: cn(
+          'scrollbar-thin [scrollbar-color:transparent_transparent] hover:[scrollbar-color:var(--scrollbar-thumb)_transparent] focus-within:[scrollbar-color:var(--scrollbar-thumb)_transparent]',
+          viewportProps?.className,
+        ),
       }}
     />
   )

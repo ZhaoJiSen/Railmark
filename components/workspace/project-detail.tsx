@@ -1,8 +1,11 @@
+import { Description } from '@heroui/react/description'
+import { Label } from '@heroui/react/label'
+import { ListBox } from '@heroui/react/list-box'
 import { ArrowLeft, ChevronRight, Folder, FolderPlus, GitBranch, Pencil, Tag } from 'lucide-react'
+import { STATES } from '../../lib/constants'
 import type { Project, Requirement, Version } from '../../lib/mygo'
 import type { GitRequest } from '../../lib/types'
 import { ProjectIconAction } from './project-icon-action'
-import { projectItemClassName, projectItemTriggerClassName } from './project-item'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '../ui/item'
 import { Status } from './status'
 
@@ -84,31 +87,31 @@ export function ProjectDetail(props: ProjectDetailProps) {
           <div className="space-y-2">
             {versions.filter(version => associations.has(version.id)).map(version => (
               <section key={version.id}>
-                <h3 className="flex items-center gap-1.5 py-1.5 ps-1 font-mono text-xs font-medium text-muted-foreground">
+                <h3 id={`project-version-${version.id}`} className="flex items-center gap-1.5 py-1.5 ps-1 font-mono text-xs font-medium text-muted-foreground">
                   <Tag aria-hidden="true" className="size-3.5 shrink-0" />
                   <span className="min-w-0 wrap-anywhere">{version.name}</span>
                 </h3>
-                <ItemGroup aria-label={`${version.name} 的关联需求`} className="ms-2.5 gap-0.5 border-s ps-2">
+                <ListBox aria-labelledby={`project-version-${version.id}`} selectionMode="none">
                   {associations.get(version.id)?.map(req => {
                     const links = req.projects.filter(link => link.projectId === project.id)
                     const branches = [...new Set(links.map(link => link.branch || '分支待绑定'))].join(' · ')
                     return (
-                      <Item key={req.id} role="listitem" size="sm" className={projectItemClassName}>
-                        <ItemContent className="min-w-0 gap-0">
-                          <ItemTitle className="block max-w-full">
-                            <button id={`project-requirement-${req.id}`} type="button" className={projectItemTriggerClassName}
-                              onClick={() => onRequirement(req)}>{req.title}</button>
-                          </ItemTitle>
-                          <ItemDescription className="font-mono wrap-anywhere text-wrap" title={branches}>{branches}</ItemDescription>
-                        </ItemContent>
-                        <ItemActions className="shrink-0">
+                      <ListBox.Item key={req.id} id={req.id} textValue={req.title} onAction={() => onRequirement(req)}>
+                        <div id={`project-requirement-${req.id}`} className="min-w-0 flex-1">
+                          <Label className="block max-w-full wrap-anywhere font-medium">{req.title}</Label>
+                          <Description className="block font-mono wrap-anywhere" title={branches}>
+                            <span className="sr-only">{STATES.find(state => state.id === req.state)?.label ?? req.state}，</span>
+                            {branches}
+                          </Description>
+                        </div>
+                        <span aria-hidden="true" className="flex shrink-0 items-center gap-1.5">
                           <Status state={req.state} />
                           <ChevronRight aria-hidden="true" className="size-3 text-muted-foreground" />
-                        </ItemActions>
-                      </Item>
+                        </span>
+                      </ListBox.Item>
                     )
                   })}
-                </ItemGroup>
+                </ListBox>
               </section>
             ))}
           </div>

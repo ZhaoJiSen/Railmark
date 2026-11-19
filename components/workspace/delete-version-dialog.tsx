@@ -43,8 +43,8 @@ export function DeleteVersionDialog({ version, onClose, restoreFocus }: {
     <Dialog open onOpenChange={open => { if (!open && !saving.current) onClose() }}>
       <DialogContent role="alertdialog" showCloseButton={false} onInteractOutside={event => event.preventDefault()}
         onCloseAutoFocus={event => { event.preventDefault(); restoreFocus() }}
-        className="gap-3 p-4 motion-reduce:animate-none! sm:max-w-sm">
-        <DialogHeader className="min-w-0 gap-1 text-left">
+        className="sm:max-w-sm">
+        <DialogHeader className="min-w-0 text-left">
           <DialogTitle className="wrap-anywhere">删除版本「{version.name}」？</DialogTitle>
           <DialogDescription className="space-y-1">
             <span className="block">{count > 0 ? `将一并删除该版本的 ${count} 条需求及其日志和交付记录。` : '该版本没有关联需求。'}</span>

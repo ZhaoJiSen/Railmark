@@ -25,6 +25,7 @@ func summarizeChanges(old Requirement, input SaveRequirementInput, deliveries []
 	}
 	for _, field := range []struct{ label, before, after string }{
 		{"需求背景", old.Background, input.Background},
+		{"实现逻辑", old.Implementation, input.Implementation},
 		{"交付范围", old.Scope, input.Scope},
 		{"验收条件", old.Acceptance, input.Acceptance},
 		{"原始链接", old.SourceURL, input.SourceURL},

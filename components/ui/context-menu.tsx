@@ -1,88 +1,92 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import { cn } from "../../lib/utils"
-import { ContextMenu as ContextMenuPrimitive } from "radix-ui"
+import { Dropdown } from '@heroui/react/dropdown'
+import { Separator } from '@heroui/react/separator'
+import { mergeProps } from '@react-aria/utils'
+import { Children, cloneElement, createContext, isValidElement, useContext, useId, useRef, useState } from 'react'
+import type { ComponentProps, ReactElement, ReactNode, RefObject } from 'react'
+import { useOverlayLifecycle } from './overlay-lifecycle'
+import type { OverlayEvents } from './overlay-lifecycle'
 
-function ContextMenu({
-  ...props
-}: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
-  return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />
+interface ContextState {
+  open: boolean
+  setOpen: (value: boolean) => void
+  opener: RefObject<HTMLElement | null>
+  anchor: RefObject<HTMLDivElement | null>
+  show: (x: number, y: number) => void
 }
-
-function ContextMenuTrigger({
-  disabled,
-  onKeyDown,
-  ...props
-}: React.ComponentProps<typeof ContextMenuPrimitive.Trigger>) {
-  return (
-    <ContextMenuPrimitive.Trigger data-slot="context-menu-trigger" aria-haspopup="menu"
-      aria-keyshortcuts={disabled ? undefined : "Shift+F10"} {...props} disabled={disabled}
-      onKeyDown={event => {
-        onKeyDown?.(event)
-        if (disabled || event.defaultPrevented || event.nativeEvent.isComposing) return
-        if (event.key !== "ContextMenu" && !(event.key === "F10" && event.shiftKey)) return
-        event.preventDefault()
-        const rect = event.currentTarget.getBoundingClientRect()
-        event.currentTarget.dispatchEvent(new MouseEvent("contextmenu", {
-          bubbles: true, cancelable: true, clientX: rect.left + 16, clientY: rect.bottom,
-        }))
-      }} />
-  )
+const Context = createContext<ContextState | null>(null)
+function useMenu() {
+  const menu = useContext(Context)
+  if (!menu) throw new Error('Context menu must have a root')
+  return menu
 }
-
-function ContextMenuContent({
-  className,
-  ...props
-}: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
-  return (
-    <ContextMenuPrimitive.Portal>
-      <ContextMenuPrimitive.Content
-        data-slot="context-menu-content"
-        className={cn(
-          "z-50 max-h-(--radix-context-menu-content-available-height) min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          className
-        )}
-        {...props}
-      />
-    </ContextMenuPrimitive.Portal>
-  )
+export function ContextMenu({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const [point, setPoint] = useState({ x: 0, y: 0 })
+  const anchor = useRef<HTMLDivElement>(null)
+  const opener = useRef<HTMLElement>(null)
+  return <Context value={{ open, setOpen, anchor, opener, show: (x, y) => {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setPoint({ x, y }); setOpen(true)
+  } }}>
+    <div ref={anchor} aria-hidden="true" className="pointer-events-none fixed size-px" style={{ left: point.x, top: point.y }} />
+    {children}
+  </Context>
 }
-
-function ContextMenuItem({
-  className,
-  inset,
-  variant = "default",
-  ...props
-}: React.ComponentProps<typeof ContextMenuPrimitive.Item> & {
-  inset?: boolean
-  variant?: "default" | "destructive"
+export function ContextMenuTrigger({ children, asChild, disabled, onKeyDown, onContextMenu, ...props }:
+  ComponentProps<'div'> & { asChild?: boolean, disabled?: boolean }) {
+  const menu = useMenu()
+  const handlers: ComponentProps<'div'> = {
+    ...props,
+    'aria-haspopup': 'menu',
+    'aria-expanded': menu.open,
+    'aria-keyshortcuts': disabled ? undefined : 'Shift+F10',
+    onContextMenu: event => {
+      onContextMenu?.(event)
+      if (disabled || event.defaultPrevented) return
+      event.preventDefault()
+      event.currentTarget.focus({ preventScroll: true })
+      menu.show(event.clientX, event.clientY)
+    },
+    onKeyDown: event => {
+      onKeyDown?.(event)
+      if (disabled || event.defaultPrevented || event.nativeEvent.isComposing) return
+      if (event.key !== 'ContextMenu' && !(event.key === 'F10' && event.shiftKey)) return
+      event.preventDefault()
+      const rect = event.currentTarget.getBoundingClientRect()
+      menu.show(rect.left + 16, rect.bottom)
+    },
+  }
+  const child = asChild ? Children.only(children) : null
+  if (isValidElement(child)) {
+    return cloneElement(child as ReactElement<ComponentProps<'div'>>, mergeProps(child.props as ComponentProps<'div'>, handlers))
+  }
+  return <div {...handlers}>{children}</div>
+}
+export function ContextMenuContent({ children, onCloseAutoFocus, className, ...props }: ComponentProps<'div'> & OverlayEvents) {
+  const { anchor, open, setOpen, opener } = useMenu()
+  return <Dropdown isOpen={open} onOpenChange={setOpen}>
+    <Dropdown.Trigger aria-hidden="true" excludeFromTabOrder className="sr-only">操作</Dropdown.Trigger>
+    <Dropdown.Popover triggerRef={anchor} placement="bottom start">
+      <MenuLifecycle onCloseAutoFocus={event => {
+        onCloseAutoFocus?.(event)
+        if (!event.defaultPrevented && opener.current?.isConnected) opener.current.focus({ preventScroll: true })
+      }}>
+        <Dropdown.Menu className={className} aria-label={props['aria-label'] ?? '操作'}>{children}</Dropdown.Menu>
+      </MenuLifecycle>
+    </Dropdown.Popover>
+  </Dropdown>
+}
+function MenuLifecycle({ children, onCloseAutoFocus }: { children: ReactNode } & OverlayEvents) {
+  useOverlayLifecycle({ onCloseAutoFocus })
+  return children
+}
+export function ContextMenuItem({ onSelect, disabled, variant, children, ...props }: Omit<ComponentProps<typeof Dropdown.Item>, 'onSelect' | 'variant'> & {
+  onSelect?: (event: Event) => void, disabled?: boolean, variant?: 'default' | 'destructive',
 }) {
-  return (
-    <ContextMenuPrimitive.Item
-      data-slot="context-menu-item"
-      data-inset={inset}
-      data-variant={variant}
-      className={cn(
-        "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground data-[variant=destructive]:*:[svg]:text-destructive!",
-        className
-      )}
-      {...props}
-    />
-  )
+  const id = useId()
+  return <Dropdown.Item id={id} isDisabled={disabled} variant={variant === 'destructive' ? 'danger' : undefined}
+    onAction={() => onSelect?.(new Event('select', { cancelable: true }))} {...props}>{children}</Dropdown.Item>
 }
-
-function ContextMenuSeparator({
-  className,
-  ...props
-}: React.ComponentProps<typeof ContextMenuPrimitive.Separator>) {
-  return (
-    <ContextMenuPrimitive.Separator
-      data-slot="context-menu-separator"
-      className={cn("-mx-1 my-1 h-px bg-border", className)}
-      {...props}
-    />
-  )
-}
-
-export { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator }
+export const ContextMenuSeparator = Separator

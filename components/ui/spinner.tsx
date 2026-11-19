@@ -1,15 +1,11 @@
-import { cn } from "../../lib/utils"
-import { Loader2Icon } from "lucide-react"
-
-function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
+'use client'
+import { Spinner as HeroSpinner } from '@heroui/react/spinner'
+import { LoaderCircle } from 'lucide-react'
+import type { ComponentProps } from 'react'
+export function Spinner(props: Omit<ComponentProps<typeof HeroSpinner<'span'>>, 'render'>) {
   return (
-    <Loader2Icon
-      role="status"
-      aria-label="处理中"
-      className={cn("size-4 motion-safe:animate-spin", className)}
-      {...props}
-    />
+    <HeroSpinner size="sm" {...props} render={slotProps => (
+      <span {...slotProps}><LoaderCircle aria-hidden="true" className="size-full" /></span>
+    )} />
   )
 }
-
-export { Spinner }

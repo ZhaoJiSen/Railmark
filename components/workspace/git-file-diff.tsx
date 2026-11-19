@@ -11,7 +11,7 @@ const GitPatchView = lazy(() => import('./git-patch-view'))
 function PatchLoading() {
   return (
     <p role="status" className="flex items-center gap-1.5 p-2 text-muted-foreground">
-      <Spinner aria-hidden="true" className="size-3" />正在读取文件差异…
+      <Spinner aria-hidden="true" />正在读取文件差异…
     </p>
   )
 }
@@ -37,7 +37,7 @@ export function GitFileDiff({ directoryId, hash, index, path }: {
 
   return (
     <section aria-label={`${path} 的差异`} className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <h4 className="hidden shrink-0 truncate border-b bg-muted/25 px-2.5 py-1.5 font-mono font-medium @min-[32rem]/git-details:block" title={path}>{path}</h4>
+      <h4 className="hidden shrink-0 truncate border-b bg-default/25 px-2.5 py-1.5 font-mono font-medium @min-[32rem]/git-details:block" title={path}>{path}</h4>
       <GitScrollArea horizontal className="flex-1 select-text"
         viewportProps={{ tabIndex: 0, role: 'region', 'aria-label': '文件差异内容' }}>
         {error && <div className="p-2"><ErrorLine message={error} /></div>}

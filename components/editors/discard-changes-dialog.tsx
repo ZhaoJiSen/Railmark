@@ -18,7 +18,7 @@ export function DiscardChangesDialog({ onKeep, onDiscard }: { onKeep: () => void
             opener.current.focus({ preventScroll: true })
           }
         }}
-        className="gap-3 p-4 motion-reduce:animate-none! sm:max-w-sm">
+        className="sm:max-w-sm">
         <DialogHeader className="text-left">
           <DialogTitle>放弃未保存的修改？</DialogTitle>
           <DialogDescription>关闭后，本次表单修改会丢失。</DialogDescription>

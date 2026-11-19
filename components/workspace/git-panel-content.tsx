@@ -1,25 +1,26 @@
 'use client'
 
-import { AlertTriangle, FolderOpen, GitBranch, RefreshCw, X } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { GitPullRequestArrow } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { Layout } from 'react-resizable-panels'
 import { beginGitCheck, publishGitChecks, useGitChecks } from '../../lib/git-checks'
 import { Desk } from '../../lib/mygo'
-import type { GitHistory, GitSnapshot, Requirement } from '../../lib/mygo'
+import type { GitBranch as Branch, GitHistory, GitSnapshot, Requirement } from '../../lib/mygo'
 import type { GitRequest } from '../../lib/types'
-import { cn, readableError } from '../../lib/utils'
+import { readableError } from '../../lib/utils'
 import { deliveryIssues, displayDate, localBranchName } from '../../lib/workspace-data'
-import { Alert, AlertDescription } from '../ui/alert'
 import { Button } from '../ui/button'
 import { ErrorLine } from '../ui/form-parts'
 import { ResizablePanel, ResizablePanelGroup } from '../ui/resizable'
+import { ConfirmGitMerge, GitIssues, gitActionLabels } from './git-branch-actions'
+import type { GitBranchAction } from './git-branch-actions'
 import { GitBranches } from './git-branches'
 import { GitColumnHandle } from './git-column-handle'
 import { GitConflictLinks } from './git-conflict-links'
 import type { GitCommitGroup } from './git-commits'
 import { GitHistoryPane } from './git-history-pane'
 import { GitMetadata } from './git-metadata'
+import { GitPanelFooter } from './git-panel-footer'
 import { GitScrollArea } from './git-scroll-area'
 
 export function GitPanelContent({ request, onClose, onProject, onConflict }: {
@@ -36,6 +37,8 @@ export function GitPanelContent({ request, onClose, onProject, onConflict }: {
   const [branchData, setBranchData] = useState<{ ref: string, refresh: number, history?: GitHistory, error?: string }>()
   const [actionError, setActionError] = useState('')
   const [notice, setNotice] = useState('')
+  const [pending, setPending] = useState<GitBranchAction['kind']>()
+  const [merge, setMerge] = useState<{ source: Branch, target: string }>()
   const [historyLayout, setHistoryLayout] = useState<Layout>()
   const [filesLayout, setFilesLayout] = useState<Layout>()
   const heading = useRef<HTMLHeadingElement>(null)
@@ -47,9 +50,13 @@ export function GitPanelContent({ request, onClose, onProject, onConflict }: {
   const latest = useGitChecks(state => state.checks[directoryId])
   const status = latest?.status ?? snapshot
   const checking = data?.refresh !== refresh
+  const operationsDisabled = checking || Boolean(pending || data?.error)
   const bound = localBranchName(delivery?.branch ?? '')
-  const boundRef = bound && snapshot?.branches.find(item => !item.remote && item.name === bound)?.ref
+  const boundBranch = bound ? snapshot?.branches.find(item => !item.remote && item.name === bound) : undefined
+  const boundRef = boundBranch?.ref
   const currentRef = snapshot?.branch ? `refs/heads/${snapshot.branch}` : ''
+  const master = currentRef && currentRef !== 'refs/heads/master'
+    ? snapshot?.branches.find(item => item.ref === 'refs/heads/master') : undefined
   const selectedRef = chosenRef === '' || snapshot?.branches.some(item => item.ref === chosenRef)
     ? chosenRef ?? '' : boundRef || ''
   const branch = snapshot?.branches.find(item => item.ref === selectedRef && item.ref !== currentRef)
@@ -57,6 +64,7 @@ export function GitPanelContent({ request, onClose, onProject, onConflict }: {
   const history = branchData?.ref === branch?.ref ? branchData : undefined
   const loading = checking || Boolean(branch && history?.refresh !== refresh)
   const issues = delivery ? deliveryIssues(delivery, status) : status?.issue ? [status.issue] : []
+  if (!delivery && status?.conflicted) issues.push(`工作区有 ${status.conflicted} 个冲突项`)
   if (bound && snapshot && !snapshot.issue && !snapshot.branchesIssue && !boundRef && bound !== snapshot.branch) {
     issues.push(`本地找不到需求绑定分支 ${bound}`)
   }
@@ -176,11 +184,37 @@ export function GitPanelContent({ request, onClose, onProject, onConflict }: {
     selectBranch(ref)
   }
 
+  async function runBranchAction(action: GitBranchAction, target: string, upstream = ''): Promise<void> {
+    const source = action.kind === 'pull' ? undefined : action.branch
+    setPending(action.kind)
+    setActionError('')
+    setNotice('')
+    try {
+      await Desk.operateGitBranch(directoryId, action.kind, source?.ref ?? '', target, upstream)
+      if (action.kind !== 'pull') selectBranch('')
+      setNotice(`${gitActionLabels[action.kind].done} ${source?.name ?? upstream}`)
+    } catch (error) {
+      setActionError(readableError(error))
+    } finally {
+      setPending(undefined)
+      setRefresh(value => value + 1)
+      if (!heading.current) {
+        const order = beginGitCheck()
+        void Desk.inspectGit(directoryId, base).then(value => publishGitChecks(order, [value])).catch(() => {})
+      }
+    }
+  }
+
+  function requestBranchAction(action: GitBranchAction): void {
+    if (!snapshot || operationsDisabled) return
+    if (action.kind === 'merge') setMerge({ source: action.branch, target: snapshot.branch })
+    else void runBranchAction(action, snapshot.branch, snapshot.upstream)
+  }
   return (
-    <div className="flex h-full min-h-0 flex-col border-t bg-background"
+    <div className="flex h-full min-h-0 flex-col"
       onKeyDown={event => {
         if (event.key !== 'Escape' || event.defaultPrevented || event.nativeEvent.isComposing) return
-        if (event.target instanceof Element && event.target.closest('[role="menu"], [role="listbox"], [data-slot="popover-content"]')) return
+        if (event.target instanceof Element && event.target.closest('[role="menu"], [role="dialog"], [role="listbox"], [data-slot="popover-content"]')) return
         event.stopPropagation()
         close()
       }}>
@@ -188,28 +222,42 @@ export function GitPanelContent({ request, onClose, onProject, onConflict }: {
       <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] overflow-hidden">
         {snapshot && !snapshot.issue ? (
           <ResizablePanelGroup orientation="horizontal" className="min-h-0 touch-auto!">
-            <ResizablePanel id="git-branches" defaultSize="18%" minSize="7rem" maxSize="38%"
+            <ResizablePanel id="git-branches" defaultSize="21%" minSize="7rem" maxSize="38%"
               style={{ overflow: 'hidden' }}>
-              <GitBranches snapshot={snapshot} selectedRef={branch?.ref ?? ''} boundRef={boundRef || undefined} onSelect={showBranch} onCopy={copyBranch} />
+              <GitBranches snapshot={snapshot} selectedRef={branch?.ref ?? ''} boundRef={boundRef}
+                onSelect={showBranch} onCopy={copyBranch} onOperate={requestBranchAction} operationsDisabled={operationsDisabled} master={master} />
             </ResizablePanel>
             <GitColumnHandle label="调整分支与提交列表宽度" />
             <ResizablePanel id="git-history" className="touch-auto!" style={{ overflow: 'hidden' }}>
               <GitHistoryPane key={branch?.ref ?? 'head'} directoryId={directoryId} groups={groups} branchLabel={branchLabel} history={historyViewport}
                 historyLayout={historyLayout} onHistoryLayoutChange={setHistoryLayout}
-                filesLayout={filesLayout} onFilesLayoutChange={setFilesLayout}>
-                <div className="space-y-2 px-2.5 pt-1.5">
-                  {issues.length > 0 && <GitIssues issues={issues}>
-                    <GitConflictLinks request={request} onOpen={openConflict} />
-                    {boundRef && boundRef !== (selectedRef || currentRef) && (
-                      <Button type="button" size="xs" variant="outline" className="mt-1.5"
-                        onClick={() => {
-                          heading.current?.focus({ preventScroll: true })
-                          showBranch(boundRef)
-                        }}>查看需求绑定分支</Button>
-                    )}
-                  </GitIssues>}
-                  <GitMetadata request={request} snapshot={snapshot} status={status ?? snapshot} />
-                </div>
+                filesLayout={filesLayout} onFilesLayoutChange={setFilesLayout}
+                header={<GitMetadata request={request} snapshot={snapshot} status={status ?? snapshot}
+                  mergeMaster={master && (() => requestBranchAction({ kind: 'merge', branch: master }))}
+                  operationsDisabled={operationsDisabled} />}>
+                {issues.length > 0 && (
+                  <div className="px-2.5 py-1.5">
+                    <GitIssues issues={issues}>
+                      {boundBranch && boundRef !== currentRef && (
+                        <Button type="button" size="xs" variant="outline" disabled={operationsDisabled}
+                          onClick={() => {
+                            heading.current?.focus({ preventScroll: true })
+                            requestBranchAction({ kind: 'checkout', branch: boundBranch })
+                          }}>
+                          <GitPullRequestArrow aria-hidden="true" />切换到需求分支
+                        </Button>
+                      )}
+                      <GitConflictLinks request={request} onOpen={openConflict} />
+                      {boundRef && boundRef !== (selectedRef || currentRef) && (
+                        <Button type="button" size="xs" variant="outline"
+                          onClick={() => {
+                            heading.current?.focus({ preventScroll: true })
+                            showBranch(boundRef)
+                          }}>查看需求绑定分支</Button>
+                      )}
+                    </GitIssues>
+                  </div>
+                )}
               </GitHistoryPane>
             </ResizablePanel>
           </ResizablePanelGroup>
@@ -224,42 +272,16 @@ export function GitPanelContent({ request, onClose, onProject, onConflict }: {
           </GitScrollArea>
         )}
       </div>
-      <footer className="flex min-h-8 shrink-0 items-center justify-between gap-2 border-t px-2">
-        <div className="flex min-w-0 items-center gap-2 text-xs">
-          <h2 id="git-panel-title" ref={heading} tabIndex={-1} className="flex min-w-0 items-center gap-1 font-medium outline-none"
-            title={request.path} aria-label={`Git 面板，${request.name}`}>
-            <GitBranch aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
-            <span className="truncate">Git · {request.name}</span>
-          </h2>
-          <span role="status" className="truncate text-muted-foreground" title={notice || undefined}>
-            {notice || (loading ? '读取中…' : data?.error || history?.error ? '读取失败' : snapshot ? displayDate(snapshot.checkedAt, 'time') : '')}
-          </span>
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          {delivery && (
-            <Button id="git-view-project" type="button" variant="ghost" size="xs" title={request.path}
-              onClick={() => onProject(delivery.projectId, resumeRequest('git-view-project'))}>查看项目</Button>
-          )}
-          <Button type="button" variant="ghost" size="icon-xs" onClick={refreshGit} disabled={loading}
-            aria-label="刷新 Git" title="刷新 Git"><RefreshCw className={cn(loading && 'motion-safe:animate-spin')} /></Button>
-          <Button type="button" variant="ghost" size="icon-xs" onClick={openDirectory}
-            aria-label="在 Finder 中打开" title={`在 Finder 中打开 ${request.path}`}><FolderOpen /></Button>
-          <Button type="button" variant="outline" size="xs" className="ms-1" onClick={close}
-            aria-label="关闭 Git 面板"><X />关闭</Button>
-        </div>
-      </footer>
+      <GitPanelFooter heading={heading} name={request.name} path={request.path}
+        status={pending ? gitActionLabels[pending].pending
+          : notice || (loading ? '读取中…' : data?.error || history?.error ? '读取失败' : snapshot ? displayDate(snapshot.checkedAt, 'time') : '')}
+        loading={loading} busy={Boolean(pending)} onRefresh={refreshGit} onDirectory={openDirectory} onClose={close}
+        onProject={delivery && (() => onProject(delivery.projectId, resumeRequest('git-view-project')))} />
+      {merge && <ConfirmGitMerge source={merge.source} target={merge.target} onClose={() => setMerge(undefined)}
+        onConfirm={() => {
+          setMerge(undefined)
+          void runBranchAction({ kind: 'merge', branch: merge.source }, merge.target)
+        }} />}
     </div>
-  )
-}
-
-function GitIssues({ issues, children }: { issues: string[], children?: ReactNode }) {
-  return (
-    <Alert variant="destructive">
-      <AlertTriangle />
-      <AlertDescription>
-        <ul className="space-y-1">{issues.map(issue => <li className="wrap-anywhere" key={issue}>{issue}</li>)}</ul>
-        {children}
-      </AlertDescription>
-    </Alert>
   )
 }

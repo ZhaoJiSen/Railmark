@@ -8,7 +8,8 @@ export type RequirementFieldsDraft = Omit<SaveRequirementInput, 'projects'>
 
 export function useRequirementDraft(versionId: number, projects: Project[], requirement?: Requirement) {
   const [draft, setDraft] = useState<RequirementFieldsDraft>(() => requirement ?? {
-    id: 0, versionId, title: '', category: 'business', direction: '', state: 'todo', background: '', scope: '', acceptance: '', sourceUrl: '',
+    id: 0, versionId, title: '', category: 'business', direction: '', state: 'todo',
+    background: '', implementation: '', scope: '', acceptance: '', sourceUrl: '',
   })
   const [links, setLinks] = useState<LinkDraft[]>(() => requirement?.projects.map(fromDelivery) ?? [])
   const [initial, setInitial] = useState(() => ({ draft, links }))
@@ -37,7 +38,7 @@ export function useRequirementDraft(versionId: number, projects: Project[], requ
     if (pending.current) return
     if (!links.length) {
       setError(projects.length
-        ? '请点击候选目录右侧的「关联」，或导入目录，将它加入当前需求。'
+        ? '请点击「关联已有」选择项目，或点击「导入目录」，为需求添加一个本地目录。'
         : '请在前端或后端导入一个本地目录。')
       document.getElementById('request-projects')?.focus()
       return

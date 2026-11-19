@@ -22,7 +22,7 @@ export function GitConflictLinks({ request, onOpen }: { request: GitRequest, onO
       {conflicts.map(item => (
         <li key={item.id} className="min-w-0 max-w-full">
           <Button type="button" id={`git-conflict-${item.id}`} variant="outline" size="xs"
-            className="h-auto min-h-6 max-w-full justify-start py-0.5 text-start whitespace-normal text-foreground"
+            className="max-w-full justify-start text-start whitespace-normal"
             onClick={() => onOpen(item)}>
             <span className="min-w-0 wrap-anywhere">
               <span className="me-1.5 font-mono text-muted-foreground">{conflictedVersions.get(item.versionId)}</span>

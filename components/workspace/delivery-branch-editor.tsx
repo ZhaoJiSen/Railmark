@@ -1,5 +1,6 @@
-import { Check, GitBranch, Pencil, Plus } from 'lucide-react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { Tooltip } from '@heroui/react/tooltip'
+import { Check, GitBranch, Plus } from 'lucide-react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Delivery } from '../../lib/mygo'
 import { readableError } from '../../lib/utils'
@@ -17,16 +18,29 @@ export function DeliveryBranchEditor({ requirementId, delivery, currentBranch, d
 }) {
   const fieldId = useId()
   const pending = useRef(false)
+  const branchLabel = useRef<HTMLSpanElement>(null)
   const update = useWorkspace(state => state.updateDeliveryField)
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(delivery.branch)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [labelClipped, setLabelClipped] = useState(false)
   const branch = localBranchName(draft)
   const savedBranch = localBranchName(delivery.branch)
   const bound = Boolean(savedBranch)
+  const showBranchTooltip = bound && labelClipped
   const removing = bound && !branch
+
+  useLayoutEffect(() => {
+    const label = branchLabel.current
+    if (!label) return
+    const measure = () => setLabelClipped(label.scrollHeight > label.clientHeight || label.scrollWidth > label.clientWidth)
+    const resize = new ResizeObserver(measure)
+    resize.observe(label)
+    measure()
+    return () => resize.disconnect()
+  }, [delivery.branch])
 
   useEffect(() => {
     if (!notice) return
@@ -63,23 +77,23 @@ export function DeliveryBranchEditor({ requirementId, delivery, currentBranch, d
       setOpen(next)
     }}>
       <DialogTrigger asChild>
-        <Button type="button" variant="ghost" size="xs" aria-label={`${bound ? '修改' : '绑定'} ${delivery.projectName} 的开发分支${directoryHint}`}
-          aria-description={[directoryHint ? delivery.path : '', delivery.branch].filter(Boolean).join('；') || undefined}
-          title={delivery.branch || '绑定开发分支'}
-          className="h-auto min-h-6 max-w-full justify-start gap-1.5 px-1.5 py-0.5 text-start font-normal whitespace-normal">
-          {bound ? <GitBranch aria-hidden="true" className="text-muted-foreground" /> : <Plus aria-hidden="true" />}
-          <span className={bound ? 'line-clamp-2 min-w-0 flex-1 font-mono wrap-anywhere' : 'wrap-anywhere'}>{delivery.branch || '绑定分支'}</span>
-          {notice ? (
-            <span className="flex shrink-0 items-center gap-0.5 text-muted-foreground">
-              <Check aria-hidden="true" className="size-3" />{notice}
-            </span>
-          ) : bound && <Pencil aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />}
-        </Button>
+        <Tooltip delay={400} isDisabled={!showBranchTooltip}>
+          <Button type="button" variant="ghost" size="xs" aria-label={`${bound ? '修改' : '绑定'} ${delivery.projectName} 的开发分支${directoryHint}`}
+            aria-description={[directoryHint ? delivery.path : '', delivery.branch].filter(Boolean).join('；') || undefined}
+            className="-ms-1 h-auto min-h-6 max-w-[calc(100%+var(--spacing))] min-w-0 justify-start px-2 py-0.5 text-start whitespace-normal">
+            {bound ? <GitBranch aria-hidden="true" className="mx-0 text-muted-foreground" /> : <Plus aria-hidden="true" className="mx-0" />}
+            {bound ? (
+              <span ref={branchLabel} className="line-clamp-2 min-w-0 font-mono wrap-anywhere">{delivery.branch}</span>
+            ) : <span className="wrap-anywhere">绑定分支</span>}
+            {notice && <Check aria-hidden="true" className="mx-0 size-3 shrink-0 text-muted-foreground" />}
+          </Button>
+          {showBranchTooltip && <Tooltip.Content placement="top start" className="font-mono">{delivery.branch}</Tooltip.Content>}
+        </Tooltip>
       </DialogTrigger>
       <span role="status" className="sr-only">{notice}</span>
       <DialogContent showCloseButton={!busy} onInteractOutside={event => event.preventDefault()}
-        className="max-h-[calc(100dvh-3rem)] gap-3 overflow-y-auto p-4 motion-reduce:animate-none! sm:max-w-md">
-        <DialogHeader className="gap-1 pe-6 text-left">
+        className="max-h-[calc(100dvh-3rem)] overflow-y-auto sm:max-w-md">
+        <DialogHeader className="text-left">
           <DialogTitle>{bound ? '修改开发分支' : '绑定开发分支'}</DialogTitle>
           <DialogDescription className="space-y-1 wrap-anywhere">
             <span className="block">{delivery.projectName} · {delivery.path}</span>

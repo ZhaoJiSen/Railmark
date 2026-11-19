@@ -139,6 +139,7 @@ export interface Requirement {
   direction: string;
   state: string;
   background: string;
+  implementation: string;
   scope: string;
   acceptance: string;
   sourceUrl: string;
@@ -155,6 +156,7 @@ export interface SaveRequirementInput {
   direction: string;
   state: string;
   background: string;
+  implementation: string;
   scope: string;
   acceptance: string;
   sourceUrl: string;
@@ -228,6 +230,9 @@ export const Desk = {
   },
   openLink(value: string): Promise<void> {
     return call("Desk.OpenLink", value);
+  },
+  operateGitBranch(directoryID: number, action: string, ref: string, branch: string, upstream: string): Promise<void> {
+    return call("Desk.OperateGitBranch", directoryID, action, ref, branch, upstream);
   },
   pickDirectory(): Promise<DirectoryPreview> {
     return call("Desk.PickDirectory");

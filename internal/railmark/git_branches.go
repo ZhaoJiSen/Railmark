@@ -35,6 +35,11 @@ func (s *Store) CreateGitBranch(ctx context.Context, directoryID int64, path, na
 	if err != nil {
 		return err
 	}
+	unlock, err := s.lockGitDirectory(dir.Path)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	if issue := gitDirectoryIssue(ctx, dir.Path); issue != "" {
 		return errors.New(issue)
 	}

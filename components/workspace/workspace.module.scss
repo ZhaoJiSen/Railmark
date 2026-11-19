@@ -4,6 +4,31 @@
   block-size: 100%;
   min-block-size: 0;
   overflow: hidden;
+  background: var(--background);
+}
+
+.workspace {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+  gap: var(--workspace-gap);
+  padding: 2px var(--workspace-gap) var(--workspace-gap);
+
+  > [data-slot='sidebar'] {
+    position: relative;
+    flex-shrink: 0;
+  }
+}
+
+.island {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+
+  @media (max-height: 25rem) {
+    [data-slot='scroll-area-viewport'] { --scroll-shadow-size: 16px; }
+  }
 }
 
 .toolbar {

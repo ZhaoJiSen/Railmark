@@ -21,12 +21,12 @@ export function VersionDatePicker({ id, value, min, onChange }: {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button id={id} type="button" variant="outline"
-          className={cn('w-full justify-start font-normal tabular-nums', !value && 'text-muted-foreground')}>
+          className={cn("w-full justify-start tabular-nums", !value && "")}>
           <CalendarDays />{value || '选择日期'}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" collisionPadding={8}
-        className="max-h-(--radix-popover-content-available-height) w-auto overflow-y-auto overscroll-none p-0"
+        className="max-h-(--available-height) w-auto overflow-y-auto overscroll-none p-0"
         onOpenAutoFocus={event => event.preventDefault()}>
         <Calendar
           mode="single"

@@ -10,6 +10,7 @@ export function RequirementContent({ requirement, onEdit }: { requirement: Requi
   const [error, setError] = useState('')
   const content = [
     ['需求背景', requirement.background],
+    ['实现逻辑', requirement.implementation],
     ['交付范围', requirement.scope],
     ['验收条件', requirement.acceptance],
   ]
@@ -28,7 +29,7 @@ export function RequirementContent({ requirement, onEdit }: { requirement: Requi
         </dl>
       ) : onEdit ? (
         <Button type="button" variant="ghost" size="sm"
-          className="-ms-1.5 px-1.5 font-normal text-muted-foreground" onClick={onEdit}>
+          className="-ms-1.5" onClick={onEdit}>
           添加需求内容
         </Button>
       ) : <p className="text-xs text-muted-foreground">暂无需求内容</p>}

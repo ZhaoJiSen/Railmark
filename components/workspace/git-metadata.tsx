@@ -1,11 +1,13 @@
-import { ArrowDown, ArrowUp, ChevronRight, GitBranch } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronRight, GitBranch, GitMerge } from 'lucide-react'
 import type { GitSnapshot } from '../../lib/mygo'
 import type { GitRequest, GitStatus } from '../../lib/types'
 import { Button } from '../ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
-export function GitMetadata({ request, snapshot, status }: { request: GitRequest, snapshot: GitSnapshot, status: GitStatus }) {
+export function GitMetadata({ request, snapshot, status, mergeMaster, operationsDisabled }: {
+  request: GitRequest, snapshot: GitSnapshot, status: GitStatus, mergeMaster?: () => void, operationsDisabled: boolean,
+}) {
   const { delivery } = request
   const branch = status.branch || (status.head ? '分离 HEAD' : '未产生提交')
   const changes = [
@@ -24,12 +26,12 @@ export function GitMetadata({ request, snapshot, status }: { request: GitRequest
   ]
 
   return (
-    <Collapsible className="border-b pb-1.5">
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+    <Collapsible className="shrink-0 border-b px-2 py-1">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2">
         <Tooltip delayDuration={300}>
           <CollapsibleTrigger asChild>
             <TooltipTrigger asChild>
-              <Button type="button" variant="ghost" size="xs" className="group max-w-full min-w-0 justify-start px-1.5">
+              <Button type="button" variant="ghost" size="xs" className="group max-w-full min-w-0 justify-start">
                 <GitBranch aria-hidden="true" className="text-muted-foreground" />
                 <span className="shrink-0 text-muted-foreground">本地检出</span>
                 <span className="min-w-0 truncate font-mono">{branch}</span>
@@ -37,9 +39,9 @@ export function GitMetadata({ request, snapshot, status }: { request: GitRequest
               </Button>
             </TooltipTrigger>
           </CollapsibleTrigger>
-          <TooltipContent className="max-w-80 wrap-anywhere font-mono data-[state=closed]:animate-none! motion-reduce:animate-none!" sideOffset={4}>{branch}</TooltipContent>
+          <TooltipContent className="max-w-80 wrap-anywhere font-mono" sideOffset={4}>{branch}</TooltipContent>
         </Tooltip>
-        <div aria-label="工作区改动" className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1.5 text-xs text-muted-foreground">
+        <div role="group" aria-label="工作区状态与操作" className="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 px-1.5 text-xs text-muted-foreground">
           {changes.length === 0 && <span>工作区干净</span>}
           {changes.map(({ label, count }) => (
             <span key={label} className={label === '冲突' ? 'text-destructive' : undefined}>
@@ -52,10 +54,17 @@ export function GitMetadata({ request, snapshot, status }: { request: GitRequest
               <ArrowDown aria-hidden="true" className="ms-1 size-3" /><span className="sr-only">落后 </span>{status.behind}
             </span>
           )}
+          {mergeMaster && (
+            <Button type="button" size="xs" variant="ghost" className="text-xs" disabled={operationsDisabled}
+              onClick={mergeMaster} aria-label="合并 master 到当前分支">
+              <GitMerge aria-hidden="true" />合并 master
+            </Button>
+          )}
         </div>
       </div>
       <CollapsibleContent>
-        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 py-1 text-xs">
+        <dl className="grid max-h-[min(6rem,14vh)] grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 overflow-auto px-1.5 py-1 text-xs scrollbar-none"
+          tabIndex={0} aria-label="Git 工作区详情">
           {rows.map(([label, value]) => (
             <div key={label} className="contents">
               <dt className="text-muted-foreground">{label}</dt>

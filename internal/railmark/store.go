@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -16,7 +17,8 @@ import (
 var schema string
 
 type Store struct {
-	db *sql.DB
+	db        *sql.DB
+	gitWrites sync.Map
 }
 
 func Open(path string) (*Store, error) {
@@ -43,10 +45,10 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("创建数据库表：%w", err)
 	}
-	if err := migrateRequirementCategory(tx); err != nil {
+	if err := migrateRequirementSchema(tx); err != nil {
 		tx.Rollback()
 		db.Close()
-		return nil, fmt.Errorf("升级需求分类：%w", err)
+		return nil, fmt.Errorf("升级需求表：%w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		db.Close()

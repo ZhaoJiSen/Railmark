@@ -1,15 +1,18 @@
 'use client'
 
-import { ArrowLeft, FolderGit2, Pencil, Tag } from 'lucide-react'
+import { ArrowLeft, FolderGit2, Pencil, Tag, Terminal } from 'lucide-react'
 import { useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import type { Ref } from 'react'
 import type { Project, Requirement, Version } from '../../lib/mygo'
 import type { GitRequest } from '../../lib/types'
 import { displayDate } from '../../lib/workspace-data'
+import { RequirementAutomation } from '../automation/requirement-automation'
 import { DiscardChangesDialog } from '../editors/discard-changes-dialog'
 import { useRequirementDraft } from '../editors/use-requirement-draft'
 import { Badge } from '../ui/badge'
+import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { Separator } from '../ui/separator'
 import { Activity } from './activity'
 import { DeliveryGroups } from './delivery-groups'
 import { RequirementStatusPicker } from './inline-status'
@@ -38,6 +41,7 @@ export interface RequirementNavigation {
 
 export function RequirementDetail({ ref, requirement, projects, requirements, versions, onBack, backLabel, onChanged, onProject, onGit }: DetailProps) {
   const editor = useRequirementDraft(requirement.versionId, projects, requirement)
+  const [automating, setAutomating] = useState(false)
   const [editing, setEditing] = useState<RequirementEditTarget>()
   const [discard, setDiscard] = useState<{ run: () => void }>()
   const returnFocus = useRef<RequirementEditTarget>(undefined)
@@ -73,7 +77,7 @@ export function RequirementDetail({ ref, requirement, projects, requirements, ve
 
   return (
     <article className="@container">
-      <header className="mb-3 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2 gap-y-1">
+      <header className="mb-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1">
         <ProjectIconAction label={backLabel} className="mt-0.5 text-muted-foreground"
           onClick={onBack} disabled={editor.busy}>
           <ArrowLeft aria-hidden="true" />
@@ -87,11 +91,14 @@ export function RequirementDetail({ ref, requirement, projects, requirements, ve
             </button>
           )}
         </h1>
-        <div className="col-start-2 flex min-h-6.5 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+        {!editing && <Button type="button" size="sm" variant="outline" onClick={() => setAutomating(true)}>
+          <Terminal aria-hidden="true" />CLI 自动化
+        </Button>}
+        <div className="col-start-2 row-start-2 flex min-h-6.5 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           {editing ? <Status state={requirement.state} /> : <RequirementStatusPicker requirement={requirement} />}
           <RequirementCategory category={requirement.category} />
           {requirement.direction && (
-            <Badge variant="outline" className="max-w-full justify-start text-muted-foreground">
+            <Badge variant="outline" className="max-w-full justify-start">
               <Tag aria-hidden="true" className="shrink-0" />
               <span className="min-w-0 wrap-anywhere whitespace-normal">
                 <span className="sr-only">方向：</span>{requirement.direction}
@@ -102,30 +109,34 @@ export function RequirementDetail({ ref, requirement, projects, requirements, ve
         </div>
       </header>
       <div className="grid items-start gap-3 @min-[48rem]:grid-cols-[minmax(0,1.7fr)_minmax(255px,1fr)]">
-        <div className="min-w-0 space-y-3">
+        <div className="min-w-0 space-y-4">
           {editing === 'request-title' && (
-            <Card className="gap-2 py-2.5">
-              <CardHeader className="px-3"><CardTitle role="heading" aria-level={2}>需求属性</CardTitle></CardHeader>
-              <CardContent className="px-3">{inlineForm}</CardContent>
-            </Card>
+            <>
+              <Card variant="transparent" className="p-0">
+                <CardHeader><CardTitle role="heading" aria-level={2}>需求属性</CardTitle></CardHeader>
+                <CardContent>{inlineForm}</CardContent>
+              </Card>
+              <Separator isDecorative />
+            </>
           )}
-          <Card className="gap-1.5 py-2.5">
-            <CardHeader className="flex min-h-6.5 items-center justify-between px-3">
+          <Card variant="transparent" className="p-0">
+            <CardHeader className="flex-row items-center justify-between gap-2">
               <CardTitle role="heading" aria-level={2}>需求内容</CardTitle>
               {!editing && (
                 <ProjectIconAction id="edit-request-background" label="编辑需求内容" className="text-muted-foreground"
                   onClick={() => beginEdit('request-background')}><Pencil aria-hidden="true" /></ProjectIconAction>
               )}
             </CardHeader>
-            <CardContent className="px-3">
+            <CardContent>
               {editing === 'request-background' ? inlineForm : (
                 <RequirementContent requirement={requirement} onEdit={editing ? undefined : () => beginEdit('request-background')} />
               )}
             </CardContent>
           </Card>
-          <Card className="gap-2 py-2.5">
-            <CardHeader className="flex min-h-6.5 items-center justify-between px-3">
-              <CardTitle role="heading" aria-level={2} className="flex items-center gap-2">
+          <Separator isDecorative />
+          <Card variant="transparent" className="p-0">
+            <CardHeader className="flex-row items-center justify-between gap-2">
+              <CardTitle role="heading" aria-level={2} className="flex items-center gap-1.5">
                 <FolderGit2 aria-hidden="true" className="size-4 shrink-0" />关联项目
               </CardTitle>
               {!editing && (
@@ -133,7 +144,7 @@ export function RequirementDetail({ ref, requirement, projects, requirements, ve
                   onClick={() => beginEdit('request-projects')}><Pencil aria-hidden="true" /></ProjectIconAction>
               )}
             </CardHeader>
-            <CardContent className="px-3">
+            <CardContent>
               {editing === 'request-projects' ? inlineForm : (
                 <DeliveryGroups scope="requirement" requirementId={requirement.id} deliveries={requirement.projects}
                   onProject={editing ? undefined : onProject} onGit={editing ? undefined : onGit} editable={!editing} />
@@ -141,8 +152,11 @@ export function RequirementDetail({ ref, requirement, projects, requirements, ve
             </CardContent>
           </Card>
         </div>
-        <Activity key={requirement.id} id={requirement.id} updatedAt={requirement.updatedAt} onChanged={onChanged} />
+        <div className="min-w-0 border-t border-separator pt-4 @min-[48rem]:border-s @min-[48rem]:border-t-0 @min-[48rem]:ps-4 @min-[48rem]:pt-0">
+          <Activity key={requirement.id} id={requirement.id} updatedAt={requirement.updatedAt} onChanged={onChanged} />
+        </div>
       </div>
+      {automating && <RequirementAutomation requirement={requirement} onClose={() => setAutomating(false)} />}
       {discard && <DiscardChangesDialog onKeep={() => setDiscard(undefined)} onDiscard={() => {
         setDiscard(undefined)
         discard.run()

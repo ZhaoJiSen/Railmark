@@ -1,21 +1,24 @@
 'use client'
 
-import { ChevronRight, Folder, FolderGit2, FolderPlus, Folders, Search } from 'lucide-react'
+import { ChevronDown, FolderGit2, Search } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Project, Requirement } from '../../lib/mygo'
 import { readableError } from '../../lib/utils'
-import { groupProjectsByParent } from '../../lib/project-directory-groups'
+import { groupProjectsByParent, parentDirectory } from '../../lib/project-directory-groups'
 import { matchesQuery } from '../../lib/workspace-data'
 import { useWorkspace } from '../../lib/workspace-store'
 import { Button } from '../ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 import { ErrorLine } from '../ui/form-parts'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group'
-import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '../ui/item'
+import { Separator } from '../ui/separator'
+import { ListBox } from '@heroui/react/list-box'
+import { Label } from '@heroui/react/label'
+import { Description } from '@heroui/react/description'
+import { Disclosure } from '@heroui/react/disclosure'
 import { Toggle } from '../ui/toggle'
 import { EmptyPanel } from './empty-panel'
-import { projectItemClassName, projectItemTriggerClassName } from './project-item'
 
 export function ProjectLibrary({ projects, requirements, onOpen, onImport, importing }: {
   projects: Project[]
@@ -40,6 +43,10 @@ export function ProjectLibrary({ projects, requirements, onOpen, onImport, impor
     })).filter(folder => folder.projects.length)
     : []
   const groupedIds = new Set(folders.flatMap(folder => folder.projects.map(project => project.id)))
+  const ungrouped = filtered.filter(project => !groupedIds.has(project.id))
+  const sharedParent = !groupByDirectory
+    ? [...directoryGroups].find(([, siblings]) => siblings.length === projects.length)?.[0]
+    : undefined
   const counts = new Map<number, number>()
   for (const requirement of requirements) {
     for (const id of new Set(requirement.projects.map(project => project.projectId))) {
@@ -61,40 +68,51 @@ export function ProjectLibrary({ projects, requirements, onOpen, onImport, impor
   }
 
   return (
-    <section>
-      <header className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-        <h1 tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">本地项目</h1>
+    <section className="grid min-w-0 grid-cols-1 gap-3" aria-labelledby="project-library-title">
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <h1 id="project-library-title" tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">本地项目</h1>
         <div className="flex flex-wrap items-center gap-1.5">
           {directoryGroups.size > 0 && (
             <Toggle size="sm" pressed={groupByDirectory} aria-disabled={savingGrouping} aria-busy={savingGrouping}
               onPressedChange={enabled => void changeGrouping(enabled)}>
-              <Folders aria-hidden="true" className="size-3.5" />按目录分组
+              按目录分组
             </Toggle>
           )}
-          <Button type="button" size="sm" onClick={onImport} disabled={importing}><FolderPlus />导入目录</Button>
+          <Button type="button" size="sm" onClick={onImport} disabled={importing}>导入目录</Button>
         </div>
       </header>
       {projects.length > 0 && (
-        <InputGroup className="mb-2.5">
-          <InputGroupInput aria-label="搜索项目" placeholder="搜索项目名、目录或仓库地址"
-            value={query} onChange={event => setQuery(event.target.value)} />
-          <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
-        </InputGroup>
+        <div>
+          <InputGroup variant="secondary" className="w-full max-w-sm">
+            <InputGroupInput aria-label="搜索项目" className="min-w-0" placeholder="搜索项目名、目录或仓库地址"
+              value={query} onChange={event => setQuery(event.target.value)} />
+            <InputGroupAddon><Search aria-hidden="true" className="size-4" /></InputGroupAddon>
+          </InputGroup>
+        </div>
       )}
       <ErrorLine message={groupingError} />
+      {projects.length > 0 && <Separator variant="secondary" isDecorative />}
       {filtered.length ? (
-        <ItemGroup className="gap-0.5" aria-label="项目列表">
+        <div className="space-y-3">
           {folders.map(folder => (
             <ProjectFolder key={folder.parent} parent={folder.parent} query={query.trim().toLowerCase()} count={folder.projects.length}>
               {folder.projects.map(project => (
-                <ProjectRow key={project.id} project={project} count={counts.get(project.id) ?? 0} onOpen={onOpen} />
+                <ProjectRow key={project.id} project={project} count={counts.get(project.id) ?? 0} parentShown onOpen={onOpen} />
               ))}
             </ProjectFolder>
           ))}
-          {filtered.filter(project => !groupedIds.has(project.id)).map(project => (
-            <ProjectRow key={project.id} project={project} count={counts.get(project.id) ?? 0} onOpen={onOpen} />
-          ))}
-        </ItemGroup>
+          {ungrouped.length > 0 && (
+            <div>
+              {sharedParent && <p className="truncate px-3 py-1 text-xs text-muted" title={sharedParent}>{sharedParent}</p>}
+              <ListBox aria-label="项目列表">
+                {ungrouped.map(project => (
+                  <ProjectRow key={project.id} project={project} count={counts.get(project.id) ?? 0}
+                    parentShown={!!sharedParent} onOpen={onOpen} />
+                ))}
+              </ListBox>
+            </div>
+          )}
+        </div>
       ) : (
         <EmptyPanel icon={<FolderGit2 />} title={projects.length ? '没有匹配的项目' : '暂无本地项目'}
           body={projects.length ? undefined : '导入后，创建需求时可以直接选择该项目和本地目录。'} />
@@ -109,54 +127,55 @@ function ProjectFolder({ parent, query, count, children }: {
   count: number
   children: ReactNode
 }) {
-  const name = parent.slice(parent.lastIndexOf('/') + 1) || parent
+  const name = directoryName(parent)
 
   return (
-    <Collapsible key={query} role="listitem" defaultOpen className="group/folder">
-      <Item size="sm" className={projectItemClassName}>
-        <ItemMedia className="!self-center !translate-y-0 gap-1.5 text-muted-foreground">
-          <ChevronRight aria-hidden="true" className="size-3 group-data-[state=open]/folder:rotate-90 motion-safe:transition-transform" />
-          <Folder aria-hidden="true" className="size-3.5" />
-        </ItemMedia>
-        <ItemContent className="min-w-0 gap-0">
-          <ItemTitle className="block max-w-full">
-            <CollapsibleTrigger asChild>
-              <button type="button" className={projectItemTriggerClassName}>{name}</button>
-            </CollapsibleTrigger>
-          </ItemTitle>
-          {name !== parent && <ItemDescription className="block truncate">{parent}</ItemDescription>}
-        </ItemContent>
-        <ItemActions className="shrink-0 text-xs text-muted-foreground">
-          <span className="whitespace-nowrap tabular-nums">{count} 个项目</span>
-        </ItemActions>
-      </Item>
-      <CollapsibleContent>
-        <ItemGroup className="ms-4 gap-0.5 border-s ps-2" aria-label={`${name}下的项目`}>{children}</ItemGroup>
+    <Collapsible key={query} defaultOpen>
+      <CollapsibleTrigger asChild>
+        <Button type="button" variant="ghost" size="sm" className="w-full justify-start" aria-label={parent}>
+          <Disclosure.Indicator><ChevronDown aria-hidden="true" /></Disclosure.Indicator>
+          <span className="min-w-0 truncate text-start">{name}</span>
+          <span className="min-w-0 flex-1 truncate text-start text-xs text-muted" title={parent}>{parentDirectory(parent)}</span>
+          <span className="shrink-0 text-xs text-muted tabular-nums">{count} 个项目</span>
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="ps-6">
+        <ListBox aria-label={`${name}下的项目`}>{children}</ListBox>
       </CollapsibleContent>
     </Collapsible>
   )
 }
 
-function ProjectRow({ project, count, onOpen }: {
+function ProjectRow({ project, count, parentShown = false, onOpen }: {
   project: Project
   count: number
+  parentShown?: boolean
   onOpen: (id: number) => void
 }) {
+  const detail = projectDirectoryLabel(project, parentShown)
+  const singlePath = project.directories.length === 1 ? project.directories[0].path : undefined
   return (
-    <Item role="listitem" size="sm" className={projectItemClassName}>
-      <ItemMedia className="!self-center !translate-y-0"><FolderGit2 aria-hidden="true" className="size-3.5 text-muted-foreground" /></ItemMedia>
-      <ItemContent className="min-w-0 gap-0">
-        <ItemTitle className="block max-w-full">
-          <button id={`project-link-${project.id}`} type="button" className={projectItemTriggerClassName}
-            onClick={() => onOpen(project.id)}>{project.name}</button>
-        </ItemTitle>
-        <ItemDescription className="block truncate">{project.directories[0]?.path}</ItemDescription>
-      </ItemContent>
-      <ItemActions className="shrink-0 flex-wrap justify-end gap-x-2 gap-y-0 text-xs text-muted-foreground">
-        <span className="whitespace-nowrap tabular-nums">{project.directories.length} 个目录</span>
-        <span className="whitespace-nowrap tabular-nums">{count} 条需求</span>
-        <ChevronRight aria-hidden="true" className="size-3" />
-      </ItemActions>
-    </Item>
+    <ListBox.Item id={project.id} textValue={project.name} onAction={() => onOpen(project.id)}>
+      <div className="min-w-0 flex-1" title={singlePath}>
+        <Label className="block max-w-full wrap-anywhere">{project.name}</Label>
+        {detail && <Description className="block truncate">{detail}</Description>}
+      </div>
+      <span className="shrink-0 text-xs text-muted tabular-nums">{count} 条需求</span>
+    </ListBox.Item>
   )
+}
+
+function directoryName(path: string): string {
+  const normalized = path.replace(/\/+$/, '')
+  return normalized.slice(normalized.lastIndexOf('/') + 1) || path
+}
+
+function projectDirectoryLabel(project: Project, parentShown: boolean): string | undefined {
+  const { directories, name } = project
+  if (directories.length > 1) return `${directories.length} 个目录`
+  const path = directories[0]?.path
+  if (!path) return
+  const folder = directoryName(path)
+  if (parentShown) return folder === name ? undefined : folder
+  return folder === name ? parentDirectory(path) : path
 }

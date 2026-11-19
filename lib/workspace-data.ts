@@ -23,7 +23,8 @@ export function matchesQuery(query: string, ...values: string[]): boolean {
 }
 
 export function requirementMatches(requirement: Requirement, query: string): boolean {
-  return matchesQuery(query, requirement.title, requirement.direction, requirement.background, requirementCategoryLabel(requirement.category),
+  return matchesQuery(query, requirement.title, requirement.direction, requirement.background, requirement.implementation,
+    requirementCategoryLabel(requirement.category),
     ...requirement.projects.flatMap(d => [d.projectName, d.path, d.branch]))
 }
 

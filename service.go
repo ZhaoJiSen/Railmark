@@ -107,6 +107,10 @@ func (d *Desk) CreateGitBranch(ctx context.Context, directoryID int64, path, nam
 	return d.store.CreateGitBranch(ctx, directoryID, path, name, startRef)
 }
 
+func (d *Desk) OperateGitBranch(ctx context.Context, directoryID int64, action, ref, branch, upstream string) error {
+	return d.store.OperateGitBranch(ctx, directoryID, action, ref, branch, upstream)
+}
+
 func (d *Desk) GitHistory(ctx context.Context, directoryID int64, ref, base string) (railmark.GitHistory, error) {
 	dir, err := d.store.Directory(ctx, directoryID)
 	if err != nil {

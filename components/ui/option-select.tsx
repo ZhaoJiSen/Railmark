@@ -16,7 +16,7 @@ export function OptionSelect({ value, options, onChange, id, label, className }:
   className?: string
 }) {
   return (
-    <Select value={value} onValueChange={onChange}>
+    <Select aria-label={label} aria-labelledby={!label && id ? `${id}-label` : undefined} value={value} onValueChange={onChange}>
       <SelectTrigger id={id} aria-label={label} className={className}>
         <SelectValue />
       </SelectTrigger>

@@ -1,10 +1,12 @@
 'use client'
 
-import { Monitor, Moon, Sun } from 'lucide-react'
+import { Dropdown } from '@heroui/react/dropdown'
+import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Desk } from '../../lib/mygo'
 import { readableError } from '../../lib/utils'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import { Button } from '../ui/button'
+import { Tooltip, TooltipContent } from '../ui/tooltip'
 
 const options = [
   { value: 'system', label: '跟随系统', icon: Monitor },
@@ -20,6 +22,7 @@ export function AppearancePicker({ loaded, onError }: {
   const [saving, setSaving] = useState(false)
   const selected = options.find(option => option.value === mode) ?? options[0]
   const Icon = selected.icon
+  const label = `外观，${selected.label}`
 
   useEffect(() => {
     if (!loaded) return
@@ -47,21 +50,26 @@ export function AppearancePicker({ loaded, onError }: {
   }
 
   return (
-    <Select value={selected.value} disabled={!mode} onValueChange={value => void changeMode(value)}>
-      <SelectTrigger size="sm" aria-label={`外观，${selected.label}`} aria-busy={saving} title="外观"
-        className="gap-1.5 px-2">
-        <SelectValue>
+    <Dropdown>
+      <Tooltip>
+        <Button type="button" variant="ghost" size="icon-sm" disabled={!mode} aria-label={label} aria-busy={saving}>
           <Icon aria-hidden="true" />
-          <span className="max-[640px]:sr-only">{selected.label}</span>
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent align="end" position="popper">
-        {options.map(({ value, label, icon: OptionIcon }) => (
-          <SelectItem key={value} value={value} disabled={saving} textValue={label}>
-            <OptionIcon aria-hidden="true" />{label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+        </Button>
+        <TooltipContent side="bottom">{label}</TooltipContent>
+      </Tooltip>
+      <Dropdown.Popover placement="bottom end">
+        <Dropdown.Menu aria-label="外观" selectionMode="single" selectedKeys={[selected.value]}
+          onAction={key => void changeMode(String(key))}>
+          {options.map(({ value, label }) => (
+            <Dropdown.Item key={value} id={value} isDisabled={saving} textValue={label}>
+              {label}
+              <Dropdown.ItemIndicator>
+                {({ isSelected }) => isSelected ? <Check aria-hidden="true" className="size-3.5" /> : null}
+              </Dropdown.ItemIndicator>
+            </Dropdown.Item>
+          ))}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown>
   )
 }

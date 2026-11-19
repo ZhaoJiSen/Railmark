@@ -6,6 +6,7 @@ import { Desk } from '../../lib/mygo';
 import { readableError } from '../../lib/utils';
 import { resolveGitRequest } from '../../lib/workspace-data';
 import { useWorkspace } from '../../lib/workspace-store';
+import { AISettingsPage } from '../automation/ai-settings-page';
 import type { ProjectEditorInput } from '../editors/project-editor';
 import { ProjectEditor } from '../editors/project-editor';
 import { RequirementEditor } from '../editors/requirement-editor';
@@ -23,6 +24,7 @@ import { RequirementDetail } from './requirement-detail';
 import { SearchDialog } from './search-dialog';
 import { Sidebar } from './sidebar';
 import { VersionView } from './version-view';
+import { useAISettingsRoute } from './use-ai-settings-route';
 import { useWorkspaceNavigation } from './use-workspace-navigation';
 import { WorkspacePanels } from './workspace-panels';
 import { WorkspaceToolbar } from './workspace-toolbar';
@@ -47,6 +49,7 @@ export function WorkspaceApp() {
   const [searching, setSearching] = useState(false);
   const [picking, setPicking] = useState(false);
   const [actionError, setActionError] = useState('');
+  const aiSettings = useAISettingsRoute();
   const git = useMemo(() => resolveGitRequest(data, gitRequest), [data, gitRequest]);
   const version = data?.versions.find((item) => item.id === versionId);
   const requirement = data?.requirements.find((item) => item.id === requirementId);
@@ -62,7 +65,7 @@ export function WorkspaceApp() {
   }, [reload]);
 
   useEffect(() => {
-    if (!data || modalOpen) return;
+    if (!data || modalOpen || aiSettings.open) return;
     function search(event: KeyboardEvent): void {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         if (document.querySelector('[role=alertdialog], [data-slot=dialog-content][data-state=open]')) return;
@@ -72,7 +75,12 @@ export function WorkspaceApp() {
     }
     window.addEventListener('keydown', search);
     return () => window.removeEventListener('keydown', search);
-  }, [data, modalOpen]);
+  }, [data, modalOpen, aiSettings.open]);
+
+  function showWorkspace(action: () => void): void {
+    aiSettings.close(false);
+    action();
+  }
 
   function reloadThen(navigate?: () => void): void {
     void reload()
@@ -95,7 +103,7 @@ export function WorkspaceApp() {
     }
   }
 
-  const breadcrumb = projectView ? '本地项目' : '版本工作台';
+  const breadcrumb = view === 'projects' ? undefined : projectView ? '本地项目' : '版本工作台';
   const context = projectView
     ? view === 'project'
       ? project?.name
@@ -105,29 +113,41 @@ export function WorkspaceApp() {
   return (
     <SidebarProvider className={styles.layout}>
       <WorkspaceToolbar
-        area={breadcrumb}
-        context={context}
-        details={view === 'requirement'}
+        area={aiSettings.open ? 'AI 设置' : breadcrumb}
+        context={aiSettings.open ? undefined : context}
+        details={!aiSettings.open && view === 'requirement'}
         onHome={projectView ? showProjects : showDashboard}
         onContext={view === 'requirement' ? () => showVersion(versionId) : undefined}
         loaded={!!data}
         onActionError={setActionError}
+        aiSettingsOpen={aiSettings.open}
+        onAISettings={aiSettings.show}
       />
-      <div className='relative flex min-h-0 flex-1 overflow-hidden'>
+      <div className={styles.workspace}>
         <Sidebar
           versions={data?.versions ?? []}
           versionId={versionId}
-          view={view}
-          onDashboard={showDashboard}
-          onVersion={showVersion}
-          onNewVersion={() => editVersion(0)}
-          onEditVersion={editVersion}
-          onProjects={showProjects}
+          view={aiSettings.open ? undefined : view}
+          onDashboard={() => showWorkspace(showDashboard)}
+          onVersion={id => showWorkspace(() => showVersion(id))}
+          onNewVersion={() => showWorkspace(() => editVersion(0))}
+          onEditVersion={id => showWorkspace(() => editVersion(id))}
+          onProjects={() => showWorkspace(showProjects)}
         />
-        <SidebarInset className='min-h-0 min-w-0'>
-          <WorkspacePanels request={git} onClose={() => setGit(undefined)}
+        <SidebarInset className='min-h-0 min-w-0 bg-transparent'>
+          {aiSettings.open && (
+            <ScrollArea className={`${styles.island} flex-1`} viewportProps={{ className: '[&>div]:block!' }}>
+              <div className={styles.content}>
+                <div className='space-y-3'>
+                  {actionError && <ErrorLine message={actionError} />}
+                  <AISettingsPage onBack={() => aiSettings.close()} />
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+          <WorkspacePanels hidden={aiSettings.open} request={git} onClose={() => setGit(undefined)}
             onProject={(id, source) => showProject(id, undefined, source)} onConflict={showRequirement}>
-            <ScrollArea viewportProps={{ ref: viewport, className: 'h-auto' }}
+            <ScrollArea viewportProps={{ ref: viewport, className: 'h-auto [scrollbar-gutter:stable]' }}
               className='grid h-full min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden'>
               <div className={styles.content}>
                 {error && (
@@ -153,7 +173,7 @@ export function WorkspaceApp() {
                     role='status'
                     className='flex items-center gap-2 text-muted-foreground'
                   >
-                    <Spinner aria-hidden='true' className='size-3.5' />
+                    <Spinner aria-hidden='true' />
                     正在读取工作区…
                   </p>
                 )}

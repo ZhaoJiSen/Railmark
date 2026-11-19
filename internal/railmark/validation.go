@@ -37,6 +37,7 @@ func normalizeRequirement(input *SaveRequirementInput) error {
 	input.Title = strings.TrimSpace(input.Title)
 	input.Direction = strings.TrimSpace(input.Direction)
 	input.Background = strings.TrimSpace(input.Background)
+	input.Implementation = strings.TrimSpace(input.Implementation)
 	input.Scope = strings.TrimSpace(input.Scope)
 	input.Acceptance = strings.TrimSpace(input.Acceptance)
 	input.SourceURL = strings.TrimSpace(input.SourceURL)

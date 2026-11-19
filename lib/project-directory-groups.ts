@@ -1,6 +1,6 @@
 import type { Delivery, Project } from './mygo'
 
-function parentDirectory(path: string): string | undefined {
+export function parentDirectory(path: string): string | undefined {
   const directory = path.replace(/\/+$/, '')
   const separator = directory.lastIndexOf('/')
   if (separator >= 0) return directory.slice(0, separator) || '/'

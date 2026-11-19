@@ -1,7 +1,12 @@
-import { Check, GitBranch, GitFork } from 'lucide-react'
+import { Autocomplete } from '@heroui/react/autocomplete'
+import { Chip } from '@heroui/react/chip'
+import { Header } from '@heroui/react/header'
+import { Label } from '@heroui/react/label'
+import { ListBox } from '@heroui/react/list-box'
+import { useFilter } from '@heroui/react/rac'
+import { Check } from 'lucide-react'
 import type { GitBranch as Branch } from '../../lib/mygo'
-import { Badge } from '../ui/badge'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command'
+import { PickerSearchField } from '../ui/picker-search-field'
 
 export function BranchChooser({ branches, selectedRef, currentBranch, onSelect, disabled, label, autoFocus }: {
   branches: Branch[]
@@ -12,29 +17,40 @@ export function BranchChooser({ branches, selectedRef, currentBranch, onSelect, 
   label: string
   autoFocus?: boolean
 }) {
+  const { contains } = useFilter({ sensitivity: 'base' })
   const groups = [
     { label: '本地分支', branches: branches.filter(branch => !branch.remote) },
     { label: '远程跟踪分支', branches: branches.filter(branch => branch.remote) },
   ]
   return (
-    <Command label={label} defaultValue={selectedRef || undefined} className="h-auto min-w-0 border">
-      <CommandInput aria-label={label} placeholder="搜索分支名称" disabled={disabled} autoFocus={autoFocus} />
-      <CommandList className="max-h-48">
-        <CommandEmpty>{branches.length ? '没有匹配的分支' : '此仓库暂无可用分支'}</CommandEmpty>
-        {groups.filter(group => group.branches.length).map(group => (
-          <CommandGroup key={group.label} heading={group.label}>
-            {group.branches.map(branch => (
-              <CommandItem key={branch.ref} value={branch.ref} keywords={[branch.name]}
-                disabled={disabled} onSelect={() => onSelect(branch)} className="items-start">
-                {branch.remote ? <GitFork aria-hidden="true" /> : <GitBranch aria-hidden="true" />}
-                <span className="min-w-0 flex-1 font-mono text-xs wrap-anywhere">{branch.name}</span>
-                {!branch.remote && branch.name === currentBranch && <Badge variant="outline">当前检出</Badge>}
-                {selectedRef === branch.ref && <Check aria-label="已选择" />}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        ))}
-      </CommandList>
-    </Command>
+    <div className="grid min-w-0 grid-cols-1 gap-3">
+      <Autocomplete.Filter filter={contains}>
+        <PickerSearchField label={label} placeholder="搜索分支名称" disabled={disabled} autoFocus={autoFocus} />
+        <ListBox aria-label="可选分支" selectionMode="single" disallowEmptySelection selectedKeys={selectedRef ? [selectedRef] : []}
+          onSelectionChange={keys => {
+            if (keys === 'all') return
+            const branch = branches.find(item => keys.has(item.ref))
+            if (branch) onSelect(branch)
+          }}
+          className="max-h-60 overflow-y-auto scrollbar"
+          renderEmptyState={() => branches.length ? '没有匹配的分支' : '此仓库暂无可用分支'}>
+          {groups.filter(group => group.branches.length).map(group => (
+            <ListBox.Section key={group.label}>
+              <Header>{group.label}</Header>
+              {group.branches.map(branch => (
+                <ListBox.Item key={branch.ref} id={branch.ref} textValue={`${branch.name} ${branch.ref}`}
+                  isDisabled={disabled}>
+                  <Label className="min-w-0 flex-1 font-mono wrap-anywhere">{branch.name}</Label>
+                  {!branch.remote && branch.name === currentBranch && <Chip size="sm" variant="soft">当前检出</Chip>}
+                  <ListBox.ItemIndicator>
+                    {({ isSelected }) => isSelected ? <Check aria-hidden="true" className="size-3.5" /> : null}
+                  </ListBox.ItemIndicator>
+                </ListBox.Item>
+              ))}
+            </ListBox.Section>
+          ))}
+        </ListBox>
+      </Autocomplete.Filter>
+    </div>
   )
 }

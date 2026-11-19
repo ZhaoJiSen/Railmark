@@ -1,5 +1,5 @@
 import { CircleCheck, GitBranch, Plus } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { localBranchName } from '../../lib/workspace-data'
 import { Button } from '../ui/button'
 import { FieldDescription } from '../ui/field'
@@ -16,6 +16,13 @@ export function DevelopmentBranchFields({ id, label = '预期开发分支（选�
   const [mode, setMode] = useState<'select' | 'create'>()
   const [createdBranch, setCreatedBranch] = useState('')
   const trigger = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (mode || !trigger.current) return
+    const button = trigger.current
+    trigger.current = null
+    button.focus({ preventScroll: true })
+  }, [mode])
 
   return (
     <div className="min-w-0 space-y-1.5">
@@ -42,7 +49,7 @@ export function DevelopmentBranchFields({ id, label = '预期开发分支（选�
         )}
       </div>
       {mode && (
-        <BranchDialog link={link} mode={mode} returnFocus={trigger.current} onClose={() => setMode(undefined)}
+        <BranchDialog link={link} mode={mode} onClose={() => setMode(undefined)}
           onSelect={branch => {
             if (mode === 'create') setCreatedBranch(branch)
             onChange({ ...link, branch })
