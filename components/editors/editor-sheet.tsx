@@ -116,9 +116,9 @@ export function EditorSheet({ title, description, headerAction, submitLabel, can
             if (saved) close(saved)
           }}>
           <ScrollArea type="hover" scrollbarSize="thin"
-            viewportProps={{ ref: setViewport, className: 'h-auto min-w-0 [&>div]:block!' }}
-            className="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] overflow-hidden">
-            <FieldSet disabled={busy} className="@container w-full min-w-0 gap-4 px-6 py-4">
+            viewportProps={{ ref: setViewport, size: 16, className: 'h-auto min-w-0 [scrollbar-gutter:stable]' }}
+            className="-ms-1 -me-3 grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] overflow-hidden">
+            <FieldSet disabled={busy} className="@container w-full min-w-0 gap-4 px-1 py-4">
               {children}
             </FieldSet>
           </ScrollArea>

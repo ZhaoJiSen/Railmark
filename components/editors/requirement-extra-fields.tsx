@@ -1,12 +1,11 @@
+import { Disclosure } from '@heroui/react/disclosure'
 import { FieldError } from '@heroui/react/field-error'
 import { Input } from '@heroui/react/input'
 import { Label } from '@heroui/react/label'
 import { TextArea } from '@heroui/react/textarea'
 import { TextField } from '@heroui/react/textfield'
-import { ChevronDown } from 'lucide-react'
 import type { SaveRequirementInput } from '../../lib/mygo'
 import { Button } from '../ui/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 import { FieldGroup } from '../ui/field'
 
 type ExtraDetails = Pick<SaveRequirementInput, 'scope' | 'acceptance' | 'sourceUrl'>
@@ -20,19 +19,17 @@ export function RequirementExtraFields({ draft, onChange }: DetailsFieldsProps<E
   const hasDetails = Boolean(draft.scope || draft.acceptance || draft.sourceUrl)
 
   return (
-    <Collapsible defaultOpen={hasDetails} className="border-t pt-2">
-      <CollapsibleTrigger asChild>
-        <Button type="button" variant="ghost" size="sm" className="group -ms-2.5">
-          <ChevronDown className="size-3 motion-safe:transition-transform group-data-[state=closed]:-rotate-90" />
-          更多需求详情<span className="font-normal text-muted-foreground">选填</span>
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="pt-2">
+    <Disclosure defaultExpanded={hasDetails} className="border-t pt-2">
+      <Button slot="trigger" type="button" variant="ghost" size="sm" className="-ms-2.5">
+        <Disclosure.Indicator aria-hidden="true" />
+        更多需求详情<span className="font-normal text-muted-foreground">选填</span>
+      </Button>
+      <Disclosure.Content className="-mx-1">
+        <div className="px-1 pt-2 pb-1">
           <ExtraFields draft={draft} onChange={onChange} />
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+      </Disclosure.Content>
+    </Disclosure>
   )
 }
 

@@ -45,10 +45,10 @@ export function Dashboard({ data, onCreate, onVersion, onProjects, onProject }: 
         </CardContent>
       </Card>
 
-      <div className="grid items-start gap-3 @min-[44rem]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid gap-3 @min-[54rem]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <DashboardVersions versions={versions} requirements={requirements} onVersion={onVersion} />
-        <Card variant="secondary" aria-labelledby="dashboard-projects" className="min-w-0 gap-2 px-2">
-          <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 ps-3">
+        <Card variant="secondary" aria-labelledby="dashboard-projects" className="min-w-0">
+          <CardHeader className="min-h-8 flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle id="dashboard-projects" role="heading" aria-level={2}>项目库</CardTitle>
             <Button type="button" variant="ghost" size="sm" onClick={onProjects}>
               {projects.length ? '查看全部' : '去项目库导入'}
