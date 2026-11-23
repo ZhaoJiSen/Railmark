@@ -1,0 +1,43 @@
+<!-- Render the macOS packaging asset with: sips -s format png resources/icon.svg -o resources/icon.png -->
+
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="surface" x1=".1" y1="0" x2=".8" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#273C72"/>
+      <stop offset=".56" stop-color="#15244A"/>
+      <stop offset="1" stop-color="#101831"/>
+    </linearGradient>
+    <linearGradient id="rim" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#B4CCFF" stop-opacity=".35"/>
+      <stop offset=".52" stop-color="#7A95DA" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#A0ACD4" stop-opacity=".13"/>
+    </linearGradient>
+    <linearGradient id="main" x1="0" y1="0" x2=".7" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#FAFCFF"/>
+      <stop offset="1" stop-color="#C8DCFF"/>
+    </linearGradient>
+    <linearGradient id="branch" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#ACC7FF"/>
+      <stop offset="1" stop-color="#7D99FF"/>
+    </linearGradient>
+    <path id="tile" d="M336 76H688C789 76 847 76 898 127C948 177 948 235 948 336V688C948 789 948 847 898 898C847 948 789 948 688 948H336C235 948 177 948 127 898C76 847 76 789 76 688V336C76 235 76 177 127 127C177 76 235 76 336 76Z"/>
+    <path id="stem" fill-rule="evenodd" d="M320 702V336C320 323 331 312 344 312H539C607 312 662 367 662 435C662 503 607 558 539 558H412V702C412 715 402 725 389 725H343C330 725 320 715 320 702ZM412 402V468H539A33 33 0 1 0 539 402H412Z"/>
+    <path id="leg" d="M480 522H598L724 690C735 705 725 725 707 725H650C642 725 636 722 631 715L480 522Z"/>
+    <filter id="tile-shadow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="mark-shadow" x="250" y="240" width="550" height="565" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="11"/>
+    </filter>
+  </defs>
+  <use href="#tile" fill="#080F23" opacity=".35" transform="translate(0 13)" filter="url(#tile-shadow)"/>
+  <use href="#tile" fill="url(#surface)" stroke="url(#rim)" stroke-width="2"/>
+  <g transform="translate(-8 -7)">
+    <g fill="#080E20" opacity=".27" transform="translate(0 9)" filter="url(#mark-shadow)">
+      <use href="#leg"/>
+      <use href="#stem"/>
+    </g>
+    <use href="#leg" fill="url(#branch)"/>
+    <use href="#stem" fill="url(#main)"/>
+  </g>
+</svg>
